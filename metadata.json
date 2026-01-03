@@ -1,0 +1,5 @@
+{
+  "name": "SyncTree - Collaborative Shared Calendar",
+  "description": "A high-performance collaborative calendar application inspired by TimeTree, featuring shared event views, AI-powered event parsing, and simulated real-time notifications.",
+  "requestFramePermissions": []
+}
