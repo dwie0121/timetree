@@ -11,20 +11,24 @@ import {
   Settings,
   Users,
   LayoutDashboard,
-  CalendarDays
+  CalendarDays,
+  List
 } from 'lucide-react';
 import { format, addMonths, subMonths, addYears, subYears } from 'date-fns';
 import CalendarGrid from './components/CalendarGrid';
 import YearGrid from './components/YearGrid';
+import ScheduleView from './components/ScheduleView';
+import TeamView from './components/TeamView';
+import SettingsView from './components/SettingsView';
 import EventModal from './components/EventModal';
 import NotificationPanel from './components/NotificationPanel';
 import { CalendarEvent, AppNotification } from './types';
 import { MOCK_USERS } from './constants';
 
-type ViewMode = 'month' | 'year';
+type AppView = 'overview-month' | 'overview-year' | 'schedule' | 'team' | 'settings';
 
 const App: React.FC = () => {
-  const [viewMode, setViewMode] = useState<ViewMode>('month');
+  const [currentView, setCurrentView] = useState<AppView>('overview-month');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
@@ -39,9 +43,8 @@ const App: React.FC = () => {
     const savedEvents = localStorage.getItem('synctree_events');
     const savedNotifs = localStorage.getItem('synctree_notifications');
     
-    if (savedEvents) setEvents(JSON.parse(savedEvents));
-    if (savedNotifs) {
-      setNotifications(JSON.parse(savedNotifs).map((n: any) => ({ ...n, time: new Date(n.time) })));
+    if (savedEvents) {
+      setEvents(JSON.parse(savedEvents));
     } else {
       const initialEvent: CalendarEvent = {
         id: 'initial-1',
@@ -52,9 +55,15 @@ const App: React.FC = () => {
         endTime: '11:00',
         category: 'Social',
         createdBy: 'Alex Rivera',
-        attendees: ['1']
+        attendees: ['1'],
+        amount: 0,
+        transactionType: 'income'
       };
       setEvents([initialEvent]);
+    }
+
+    if (savedNotifs) {
+      setNotifications(JSON.parse(savedNotifs).map((n: any) => ({ ...n, time: new Date(n.time) })));
     }
   }, []);
 
@@ -101,41 +110,75 @@ const App: React.FC = () => {
   };
 
   const handlePrev = () => {
-    setCurrentDate(viewMode === 'month' ? subMonths(currentDate, 1) : subYears(currentDate, 1));
+    if (currentView === 'overview-month') setCurrentDate(subMonths(currentDate, 1));
+    else if (currentView === 'overview-year') setCurrentDate(subYears(currentDate, 1));
   };
 
   const handleNext = () => {
-    setCurrentDate(viewMode === 'month' ? addMonths(currentDate, 1) : addYears(currentDate, 1));
+    if (currentView === 'overview-month') setCurrentDate(addMonths(currentDate, 1));
+    else if (currentView === 'overview-year') setCurrentDate(addYears(currentDate, 1));
   };
 
-  const handleMonthClick = (month: Date) => {
-    setCurrentDate(month);
-    setViewMode('month');
+  const getViewTitle = () => {
+    switch (currentView) {
+      case 'overview-month': return format(currentDate, 'MMMM yyyy');
+      case 'overview-year': return format(currentDate, 'yyyy');
+      case 'schedule': return 'My Schedule';
+      case 'team': return 'Team Shared';
+      case 'settings': return 'Settings & Finance';
+      default: return 'SyncTree';
+    }
   };
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      const remoteEvent: CalendarEvent = {
-        id: 'remote-1',
-        title: 'Project Kickoff 🚀',
-        description: 'New team project start.',
-        date: new Date().toISOString().split('T')[0],
-        startTime: '14:00',
-        endTime: '15:00',
-        category: 'Work',
-        createdBy: 'Sarah Chen',
-        attendees: ['2']
-      };
-      setEvents(prev => {
-        if (prev.find(e => e.id === 'remote-1')) return prev;
-        pushNotification('New Shared Event', 'Sarah Chen added Project Kickoff to the calendar.', 'creation');
-        return [...prev, remoteEvent];
-      });
-    }, 15000);
-    return () => clearTimeout(timer);
-  }, []);
 
   const unreadCount = notifications.filter(n => !n.isRead).length;
+
+  const renderContent = () => {
+    switch (currentView) {
+      case 'overview-month':
+        return (
+          <CalendarGrid 
+            currentMonth={currentDate} 
+            events={events}
+            onDateClick={(date) => {
+              setSelectedDate(format(date, 'yyyy-MM-dd'));
+              setIsModalOpen(true);
+              setEditingEvent(null);
+            }}
+            onEventClick={(event) => {
+              setEditingEvent(event);
+              setIsModalOpen(true);
+            }}
+          />
+        );
+      case 'overview-year':
+        return (
+          <YearGrid 
+            currentDate={currentDate}
+            events={events}
+            onMonthClick={(month) => {
+              setCurrentDate(month);
+              setCurrentView('overview-month');
+            }}
+          />
+        );
+      case 'schedule':
+        return (
+          <ScheduleView 
+            events={events}
+            onEventClick={(event) => {
+              setEditingEvent(event);
+              setIsModalOpen(true);
+            }}
+          />
+        );
+      case 'team':
+        return <TeamView />;
+      case 'settings':
+        return <SettingsView events={events} />;
+      default:
+        return null;
+    }
+  };
 
   return (
     <div className="flex h-screen w-full bg-[#f9fafb] text-gray-900 overflow-hidden font-inter">
@@ -150,10 +193,18 @@ const App: React.FC = () => {
             <span className="text-xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-700 to-indigo-600">SyncTree</span>
           </div>
           <nav className="space-y-1">
-            <NavItem icon={<LayoutDashboard size={20} />} label="Overview" active />
-            <NavItem icon={<CalendarIcon size={20} />} label="My Schedule" />
-            <NavItem icon={<Users size={20} />} label="Team Shared" />
-            <NavItem icon={<Settings size={20} />} label="Settings" />
+            <button className="w-full text-left" onClick={() => setCurrentView('overview-month')}>
+              <NavItem icon={<LayoutDashboard size={20} />} label="Overview" active={currentView === 'overview-month' || currentView === 'overview-year'} />
+            </button>
+            <button className="w-full text-left" onClick={() => setCurrentView('schedule')}>
+              <NavItem icon={<List size={20} />} label="My Schedule" active={currentView === 'schedule'} />
+            </button>
+            <button className="w-full text-left" onClick={() => setCurrentView('team')}>
+              <NavItem icon={<Users size={20} />} label="Team Shared" active={currentView === 'team'} />
+            </button>
+            <button className="w-full text-left" onClick={() => setCurrentView('settings')}>
+              <NavItem icon={<Settings size={20} />} label="Settings" active={currentView === 'settings'} />
+            </button>
           </nav>
           <div className="mt-auto pt-8 border-t border-gray-50">
             <div className="flex items-center gap-3 px-2">
@@ -170,67 +221,58 @@ const App: React.FC = () => {
       <main className="flex-1 flex flex-col min-w-0 relative">
         <header className="h-20 shrink-0 flex items-center justify-between px-4 lg:px-8 bg-white/80 backdrop-blur-md border-b border-gray-100 sticky top-0 z-30">
           <div className="flex items-center gap-4">
-            <button 
-              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="lg:hidden p-2 hover:bg-gray-100 rounded-xl transition-colors"
-            >
+            <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="lg:hidden p-2 hover:bg-gray-100 rounded-xl transition-colors">
               <Menu size={24} />
             </button>
             <div className="flex flex-col">
-              <h1 className="text-2xl font-bold text-gray-900">
-                {viewMode === 'month' ? format(currentDate, 'MMMM yyyy') : format(currentDate, 'yyyy')}
-              </h1>
+              <h1 className="text-2xl font-bold text-gray-900">{getViewTitle()}</h1>
               <p className="text-[10px] uppercase tracking-widest font-bold text-blue-500">Shared Workspace</p>
             </div>
           </div>
 
           <div className="flex items-center gap-2 sm:gap-4">
-            {/* View Toggle */}
-            <div className="hidden md:flex bg-gray-100 rounded-xl p-1 gap-1 mr-2">
-              <button 
-                onClick={() => setViewMode('month')}
-                className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                  viewMode === 'month' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                Month
-              </button>
-              <button 
-                onClick={() => setViewMode('year')}
-                className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                  viewMode === 'year' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                Year
-              </button>
-            </div>
+            {/* View Toggle (Only shown on Overview) */}
+            {(currentView === 'overview-month' || currentView === 'overview-year') && (
+              <div className="hidden md:flex bg-gray-100 rounded-xl p-1 gap-1 mr-2">
+                <button 
+                  onClick={() => setCurrentView('overview-month')}
+                  className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                    currentView === 'overview-month' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  Month
+                </button>
+                <button 
+                  onClick={() => setCurrentView('overview-year')}
+                  className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                    currentView === 'overview-year' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  Year
+                </button>
+              </div>
+            )}
 
-            <div className="flex bg-gray-100 rounded-xl p-1 gap-1">
-              <button 
-                onClick={handlePrev}
-                className="p-1.5 hover:bg-white hover:shadow-sm rounded-lg transition-all text-gray-600"
-              >
-                <ChevronLeft size={20} />
-              </button>
-              <button 
-                onClick={() => { setCurrentDate(new Date()); setViewMode('month'); }}
-                className="px-3 py-1.5 hover:bg-white hover:shadow-sm rounded-lg transition-all text-xs font-bold text-gray-600"
-              >
-                Today
-              </button>
-              <button 
-                onClick={handleNext}
-                className="p-1.5 hover:bg-white hover:shadow-sm rounded-lg transition-all text-gray-600"
-              >
-                <ChevronRight size={20} />
-              </button>
-            </div>
+            {/* Navigation Controls (Only for calendar views) */}
+            {(currentView === 'overview-month' || currentView === 'overview-year') && (
+              <div className="flex bg-gray-100 rounded-xl p-1 gap-1">
+                <button onClick={handlePrev} className="p-1.5 hover:bg-white hover:shadow-sm rounded-lg transition-all text-gray-600">
+                  <ChevronLeft size={20} />
+                </button>
+                <button 
+                  onClick={() => { setCurrentDate(new Date()); setCurrentView('overview-month'); }}
+                  className="px-3 py-1.5 hover:bg-white hover:shadow-sm rounded-lg transition-all text-xs font-bold text-gray-600"
+                >
+                  Today
+                </button>
+                <button onClick={handleNext} className="p-1.5 hover:bg-white hover:shadow-sm rounded-lg transition-all text-gray-600">
+                  <ChevronRight size={20} />
+                </button>
+              </div>
+            )}
 
             <div className="relative">
-              <button 
-                onClick={() => setShowNotifications(!showNotifications)}
-                className="p-2.5 hover:bg-gray-100 rounded-xl transition-all relative group"
-              >
+              <button onClick={() => setShowNotifications(!showNotifications)} className="p-2.5 hover:bg-gray-100 rounded-xl transition-all relative group">
                 <Bell size={22} className="text-gray-600 group-hover:text-blue-600 transition-colors" />
                 {unreadCount > 0 && (
                   <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-rose-500 border-2 border-white rounded-full"></span>
@@ -247,7 +289,7 @@ const App: React.FC = () => {
 
             <button 
               onClick={() => { setEditingEvent(null); setIsModalOpen(true); }}
-              className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2 px-5 py-2.5 rounded-xl transition-all shadow-lg shadow-blue-200 active:scale-95 group"
+              className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2 px-5 py-2.5 rounded-xl shadow-lg shadow-blue-200 active:scale-95 group transition-all"
             >
               <Plus size={20} className="group-hover:rotate-90 transition-transform duration-300" />
               <span className="hidden sm:inline font-bold text-sm">Create</span>
@@ -259,12 +301,7 @@ const App: React.FC = () => {
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="flex -space-x-3 overflow-hidden">
               {MOCK_USERS.map((user) => (
-                <img 
-                  key={user.id}
-                  className="inline-block h-10 w-10 rounded-full ring-4 ring-[#f9fafb] shadow-sm hover:translate-y-[-4px] transition-all cursor-pointer"
-                  src={user.avatar}
-                  alt={user.name}
-                />
+                <img key={user.id} className="inline-block h-10 w-10 rounded-full ring-4 ring-[#f9fafb] shadow-sm hover:translate-y-[-4px] transition-all cursor-pointer" src={user.avatar} alt={user.name} />
               ))}
               <div className="h-10 w-10 rounded-full ring-4 ring-[#f9fafb] bg-white flex items-center justify-center text-xs font-bold text-gray-400 border border-dashed border-gray-300 cursor-pointer hover:bg-gray-50">
                 +12
@@ -274,36 +311,12 @@ const App: React.FC = () => {
             <div className="flex items-center gap-3 w-full sm:w-auto">
               <div className="flex-1 sm:w-64 bg-white rounded-xl px-4 py-2 border border-gray-200 flex items-center gap-2 focus-within:ring-2 ring-blue-500/20 transition-all">
                 <Search size={18} className="text-gray-400" />
-                <input 
-                  type="text" 
-                  placeholder="Find events..." 
-                  className="w-full text-sm outline-none bg-transparent"
-                />
+                <input type="text" placeholder="Find events..." className="w-full text-sm outline-none bg-transparent" />
               </div>
             </div>
           </div>
 
-          {viewMode === 'month' ? (
-            <CalendarGrid 
-              currentMonth={currentDate} 
-              events={events}
-              onDateClick={(date) => {
-                setSelectedDate(format(date, 'yyyy-MM-dd'));
-                setIsModalOpen(true);
-                setEditingEvent(null);
-              }}
-              onEventClick={(event) => {
-                setEditingEvent(event);
-                setIsModalOpen(true);
-              }}
-            />
-          ) : (
-            <YearGrid 
-              currentDate={currentDate}
-              events={events}
-              onMonthClick={handleMonthClick}
-            />
-          )}
+          {renderContent()}
         </div>
 
         <button 
@@ -323,24 +336,21 @@ const App: React.FC = () => {
       />
       
       {isSidebarOpen && (
-        <div 
-          className="lg:hidden fixed inset-0 bg-black/20 backdrop-blur-sm z-30"
-          onClick={() => setIsSidebarOpen(false)}
-        />
+        <div className="lg:hidden fixed inset-0 bg-black/20 backdrop-blur-sm z-30" onClick={() => setIsSidebarOpen(false)} />
       )}
     </div>
   );
 };
 
 const NavItem: React.FC<{ icon: React.ReactNode, label: string, active?: boolean }> = ({ icon, label, active }) => (
-  <a href="#" className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all font-medium text-sm ${
+  <div className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all font-medium text-sm ${
     active 
       ? 'bg-blue-50 text-blue-700 shadow-sm' 
       : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
   }`}>
     <span className={active ? 'text-blue-600' : 'text-gray-400'}>{icon}</span>
     {label}
-  </a>
+  </div>
 );
 
 export default App;

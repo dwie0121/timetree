@@ -11,6 +11,8 @@ export interface CalendarEvent {
   category: Category;
   createdBy: string;
   attendees: string[];
+  amount?: number;
+  transactionType?: 'income' | 'expense';
 }
 
 export interface AppNotification {
@@ -26,4 +28,6 @@ export interface User {
   id: string;
   name: string;
   avatar: string;
+  role: string;
+  email: string;
 }

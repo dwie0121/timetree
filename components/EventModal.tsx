@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { X, Sparkles, Clock, MapPin, AlignLeft, Calendar as CalendarIcon, Loader2 } from 'lucide-react';
+import { X, Sparkles, Clock, AlignLeft, Calendar as CalendarIcon, Loader2, DollarSign } from 'lucide-react';
 import { CalendarEvent, Category } from '../types';
 import { CATEGORIES } from '../constants';
 import { parseEventFromNaturalLanguage } from '../services/geminiService';
@@ -20,6 +20,8 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, initia
   const [endTime, setEndTime] = useState('10:00');
   const [category, setCategory] = useState<Category>('Personal');
   const [description, setDescription] = useState('');
+  const [amount, setAmount] = useState<string>('');
+  const [transactionType, setTransactionType] = useState<'income' | 'expense'>('expense');
   const [isMagicParsing, setIsMagicParsing] = useState(false);
   const [magicInput, setMagicInput] = useState('');
 
@@ -31,6 +33,8 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, initia
       setEndTime(editEvent.endTime || '10:00');
       setCategory(editEvent.category);
       setDescription(editEvent.description || '');
+      setAmount(editEvent.amount?.toString() || '');
+      setTransactionType(editEvent.transactionType || 'expense');
     } else {
       setTitle('');
       setDate(initialDate || new Date().toISOString().split('T')[0]);
@@ -38,6 +42,8 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, initia
       setEndTime('10:00');
       setCategory('Personal');
       setDescription('');
+      setAmount('');
+      setTransactionType('expense');
     }
   }, [editEvent, initialDate, isOpen]);
 
@@ -72,7 +78,6 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, initia
         </div>
 
         <div className="p-6 space-y-6 max-h-[80vh] overflow-y-auto">
-          {/* AI Input Section */}
           {!editEvent && (
             <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-2xl border border-blue-100">
               <label className="text-xs font-bold text-blue-700 uppercase tracking-wider flex items-center gap-2 mb-2">
@@ -81,7 +86,7 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, initia
               <div className="flex gap-2">
                 <input 
                   type="text"
-                  placeholder="e.g. Lunch with Sarah next Friday at 1pm"
+                  placeholder="e.g. Client payment $500 today"
                   value={magicInput}
                   onChange={(e) => setMagicInput(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleMagicParse()}
@@ -98,7 +103,6 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, initia
             </div>
           )}
 
-          {/* Title Input */}
           <div>
             <input 
               type="text" 
@@ -110,7 +114,6 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, initia
           </div>
 
           <div className="space-y-4">
-            {/* Date & Time */}
             <div className="flex items-center gap-4 text-gray-600">
               <div className="flex items-center gap-2 bg-gray-50 px-3 py-2 rounded-xl border border-gray-100 flex-1">
                 <CalendarIcon size={18} className="text-gray-400" />
@@ -129,17 +132,37 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, initia
                   onChange={(e) => setStartTime(e.target.value)}
                   className="bg-transparent border-none focus:ring-0 text-sm outline-none w-20"
                 />
-                <span className="text-gray-300">-</span>
-                <input 
-                  type="time"
-                  value={endTime}
-                  onChange={(e) => setEndTime(e.target.value)}
-                  className="bg-transparent border-none focus:ring-0 text-sm outline-none w-20"
-                />
               </div>
             </div>
 
-            {/* Category */}
+            {/* Income/Expense Section */}
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 bg-gray-50 px-3 py-2 rounded-xl border border-gray-100 flex-1">
+                <DollarSign size={18} className="text-gray-400" />
+                <input 
+                  type="number"
+                  placeholder="Amount"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  className="bg-transparent border-none focus:ring-0 text-sm outline-none w-full"
+                />
+              </div>
+              <div className="flex bg-gray-100 p-1 rounded-xl">
+                <button 
+                  onClick={() => setTransactionType('income')}
+                  className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${transactionType === 'income' ? 'bg-emerald-500 text-white shadow-sm' : 'text-gray-500'}`}
+                >
+                  Income
+                </button>
+                <button 
+                  onClick={() => setTransactionType('expense')}
+                  className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${transactionType === 'expense' ? 'bg-rose-500 text-white shadow-sm' : 'text-gray-500'}`}
+                >
+                  Expense
+                </button>
+              </div>
+            </div>
+
             <div>
               <label className="text-xs font-bold text-gray-400 uppercase tracking-widest block mb-3">Category</label>
               <div className="flex flex-wrap gap-2">
@@ -160,7 +183,6 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, initia
               </div>
             </div>
 
-            {/* Description */}
             <div className="flex gap-3 items-start">
               <AlignLeft size={20} className="text-gray-400 mt-2 shrink-0" />
               <textarea 
@@ -174,15 +196,14 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, initia
         </div>
 
         <div className="p-6 bg-gray-50/80 flex items-center justify-end gap-3 border-t border-gray-100">
+          <button onClick={onClose} className="px-6 py-2.5 text-gray-600 hover:bg-gray-200 rounded-xl font-medium text-sm">Cancel</button>
           <button 
-            onClick={onClose}
-            className="px-6 py-2.5 text-gray-600 hover:bg-gray-200 rounded-xl transition-all font-medium text-sm"
-          >
-            Cancel
-          </button>
-          <button 
-            onClick={() => onSave({ title, date, startTime, endTime, category, description })}
-            className="px-8 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-all shadow-lg shadow-blue-200 font-bold text-sm active:scale-95"
+            onClick={() => onSave({ 
+              title, date, startTime, endTime, category, description, 
+              amount: amount ? parseFloat(amount) : undefined, 
+              transactionType 
+            })}
+            className="px-8 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-lg shadow-blue-200 font-bold text-sm"
           >
             Save Event
           </button>
