@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Plus, 
   ChevronLeft, 
@@ -12,7 +12,8 @@ import {
   Users,
   LayoutDashboard,
   CalendarDays,
-  List
+  List,
+  Share2
 } from 'lucide-react';
 import { format, addMonths, subMonths, addYears, subYears } from 'date-fns';
 import CalendarGrid from './components/CalendarGrid';
@@ -22,6 +23,7 @@ import TeamView from './components/TeamView';
 import SettingsView from './components/SettingsView';
 import EventModal from './components/EventModal';
 import NotificationPanel from './components/NotificationPanel';
+import ShareModal from './components/ShareModal';
 import { CalendarEvent, AppNotification } from './types';
 import { MOCK_USERS } from './constants';
 
@@ -34,14 +36,37 @@ const App: React.FC = () => {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  
+  // Real-time Sync Reference
+  const syncChannel = useRef<BroadcastChannel | null>(null);
 
-  // Initialize Data
+  // Get Workspace ID from URL
+  const getWorkspaceId = () => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('ws') || 'default-workspace';
+  };
+
+  // Initialize Sync and Data
   useEffect(() => {
-    const savedEvents = localStorage.getItem('synctree_events');
-    const savedNotifs = localStorage.getItem('synctree_notifications');
+    const wsId = getWorkspaceId();
+    
+    // Set up real-time broadcast channel
+    syncChannel.current = new BroadcastChannel(`synctree_ws_${wsId}`);
+    
+    syncChannel.current.onmessage = (event) => {
+      const { type, data, sender } = event.data;
+      if (type === 'SYNC_EVENTS') {
+        setEvents(data);
+        pushNotification('Workspace Updated', `Someone updated the shared calendar.`, 'update');
+      }
+    };
+
+    const savedEvents = localStorage.getItem(`synctree_events_${wsId}`);
+    const savedNotifs = localStorage.getItem(`synctree_notifications_${wsId}`);
     
     if (savedEvents) {
       setEvents(JSON.parse(savedEvents));
@@ -65,15 +90,30 @@ const App: React.FC = () => {
     if (savedNotifs) {
       setNotifications(JSON.parse(savedNotifs).map((n: any) => ({ ...n, time: new Date(n.time) })));
     }
+
+    return () => {
+      syncChannel.current?.close();
+    };
   }, []);
 
+  // Sync to Local Storage and Broadcast
   useEffect(() => {
-    localStorage.setItem('synctree_events', JSON.stringify(events));
+    const wsId = getWorkspaceId();
+    localStorage.setItem(`synctree_events_${wsId}`, JSON.stringify(events));
   }, [events]);
 
   useEffect(() => {
-    localStorage.setItem('synctree_notifications', JSON.stringify(notifications));
+    const wsId = getWorkspaceId();
+    localStorage.setItem(`synctree_notifications_${wsId}`, JSON.stringify(notifications));
   }, [notifications]);
+
+  const broadcastEvents = (updatedEvents: CalendarEvent[]) => {
+    syncChannel.current?.postMessage({
+      type: 'SYNC_EVENTS',
+      data: updatedEvents,
+      sender: MOCK_USERS[0].name
+    });
+  };
 
   const pushNotification = (title: string, message: string, type: 'creation' | 'update' | 'reminder') => {
     const newNotif: AppNotification = {
@@ -85,15 +125,12 @@ const App: React.FC = () => {
       type
     };
     setNotifications(prev => [newNotif, ...prev]);
-    if (Notification.permission === 'granted') {
-      new Notification(title, { body: message });
-    }
   };
 
   const handleSaveEvent = (eventData: Omit<CalendarEvent, 'id' | 'createdBy' | 'attendees'>) => {
+    let updatedEvents: CalendarEvent[];
     if (editingEvent) {
-      const updated = events.map(e => e.id === editingEvent.id ? { ...e, ...eventData } : e);
-      setEvents(updated);
+      updatedEvents = events.map(e => e.id === editingEvent.id ? { ...e, ...eventData } : e);
       pushNotification('Event Updated', `${eventData.title} was changed.`, 'update');
     } else {
       const newEvent: CalendarEvent = {
@@ -102,9 +139,12 @@ const App: React.FC = () => {
         createdBy: MOCK_USERS[0].name,
         attendees: [MOCK_USERS[0].id]
       };
-      setEvents(prev => [...prev, newEvent]);
+      updatedEvents = [...events, newEvent];
       pushNotification('New Event Created', `${MOCK_USERS[0].name} added "${eventData.title}"`, 'creation');
     }
+    
+    setEvents(updatedEvents);
+    broadcastEvents(updatedEvents); // Broadcast to other tabs
     setIsModalOpen(false);
     setEditingEvent(null);
   };
@@ -226,12 +266,22 @@ const App: React.FC = () => {
             </button>
             <div className="flex flex-col">
               <h1 className="text-2xl font-bold text-gray-900">{getViewTitle()}</h1>
-              <p className="text-[10px] uppercase tracking-widest font-bold text-blue-500">Shared Workspace</p>
+              <div className="flex items-center gap-2">
+                <p className="text-[10px] uppercase tracking-widest font-bold text-blue-500">Shared Workspace</p>
+                <span className="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-md font-black uppercase tracking-tighter shadow-sm">Live Sync</span>
+              </div>
             </div>
           </div>
 
           <div className="flex items-center gap-2 sm:gap-4">
-            {/* View Toggle (Only shown on Overview) */}
+            <button 
+              onClick={() => setIsShareModalOpen(true)}
+              className="p-2.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-xl transition-all flex items-center gap-2 font-bold text-xs"
+            >
+              <Share2 size={18} />
+              <span className="hidden lg:inline text-xs">Share</span>
+            </button>
+
             {(currentView === 'overview-month' || currentView === 'overview-year') && (
               <div className="hidden md:flex bg-gray-100 rounded-xl p-1 gap-1 mr-2">
                 <button 
@@ -253,7 +303,6 @@ const App: React.FC = () => {
               </div>
             )}
 
-            {/* Navigation Controls (Only for calendar views) */}
             {(currentView === 'overview-month' || currentView === 'overview-year') && (
               <div className="flex bg-gray-100 rounded-xl p-1 gap-1">
                 <button onClick={handlePrev} className="p-1.5 hover:bg-white hover:shadow-sm rounded-lg transition-all text-gray-600">
@@ -333,6 +382,11 @@ const App: React.FC = () => {
         onSave={handleSaveEvent}
         initialDate={selectedDate}
         editEvent={editingEvent}
+      />
+
+      <ShareModal 
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
       />
       
       {isSidebarOpen && (
