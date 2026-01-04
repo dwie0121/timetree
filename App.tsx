@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Plus, 
   ChevronLeft, 
@@ -14,8 +13,8 @@ import {
   List,
   Share2,
   Activity,
-  AlertCircle,
-  CheckCircle2
+  Cloud,
+  CloudOff
 } from 'lucide-react';
 import { format, addMonths, addYears } from 'date-fns';
 import CalendarGrid from './components/CalendarGrid';
@@ -28,6 +27,7 @@ import NotificationPanel from './components/NotificationPanel';
 import ShareModal from './components/ShareModal';
 import { CalendarEvent, AppNotification } from './types';
 import { MOCK_USERS } from './constants';
+import { supabase } from './services/supabaseClient';
 
 type AppView = 'overview-month' | 'overview-year' | 'schedule' | 'team' | 'settings';
 
@@ -42,69 +42,73 @@ const App: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [dbConnected, setDbConnected] = useState(!!supabase);
   
-  const syncChannel = useRef<BroadcastChannel | null>(null);
   const isAiActive = !!process.env.API_KEY && process.env.API_KEY !== 'undefined';
 
-  const getWorkspaceId = () => {
+  const getWorkspaceId = useCallback(() => {
     const params = new URLSearchParams(window.location.search);
     return params.get('ws') || 'personal-hub';
-  };
-
-  useEffect(() => {
-    const wsId = getWorkspaceId();
-    syncChannel.current = new BroadcastChannel(`synctree_ws_${wsId}`);
-    
-    syncChannel.current.onmessage = (event) => {
-      const { type, data } = event.data;
-      if (type === 'SYNC_EVENTS') {
-        setEvents(data);
-        pushNotification('Workspace Updated', `Shared calendar sync completed.`, 'update');
-      }
-    };
-
-    const savedEvents = localStorage.getItem(`synctree_events_${wsId}`);
-    const savedNotifs = localStorage.getItem(`synctree_notifications_${wsId}`);
-    
-    if (savedEvents) {
-      setEvents(JSON.parse(savedEvents));
-    } else {
-      const initialEvent: CalendarEvent = {
-        id: 'initial-1',
-        title: 'Launch SyncTree 🚀',
-        description: 'Welcome to your collaborative workspace.',
-        date: new Date().toISOString().split('T')[0],
-        startTime: '09:00',
-        endTime: '10:00',
-        category: 'Work',
-        createdBy: 'Alex Rivera',
-        attendees: ['1'],
-        amount: 0,
-        transactionType: 'income'
-      };
-      setEvents([initialEvent]);
-    }
-
-    if (savedNotifs) {
-      setNotifications(JSON.parse(savedNotifs).map((n: any) => ({ ...n, time: new Date(n.time) })));
-    }
-
-    return () => {
-      syncChannel.current?.close();
-    };
   }, []);
 
+  const fetchEvents = useCallback(async () => {
+    if (!supabase) return;
+    const { data, error } = await supabase
+      .from('events')
+      .select('*')
+      .eq('workspace_id', getWorkspaceId());
+    
+    if (error) {
+      console.error("Supabase fetch error:", error);
+    } else if (data) {
+      // Map Supabase snake_case if necessary, or assume guide schema matches
+      const mappedEvents: CalendarEvent[] = data.map(item => ({
+        id: item.id,
+        title: item.title,
+        description: item.description,
+        date: item.date,
+        startTime: item.start_time,
+        endTime: item.end_time,
+        category: item.category,
+        createdBy: item.created_by,
+        attendees: item.attendees,
+        amount: item.amount,
+        transactionType: item.transaction_type
+      }));
+      setEvents(mappedEvents);
+    }
+  }, [getWorkspaceId]);
+
   useEffect(() => {
     const wsId = getWorkspaceId();
-    localStorage.setItem(`synctree_events_${wsId}`, JSON.stringify(events));
-  }, [events]);
+    
+    if (supabase) {
+      fetchEvents();
 
-  const broadcastEvents = (updatedEvents: CalendarEvent[]) => {
-    syncChannel.current?.postMessage({
-      type: 'SYNC_EVENTS',
-      data: updatedEvents
-    });
-  };
+      const subscription = supabase
+        .channel(`ws_events_${wsId}`)
+        .on('postgres_changes', { 
+          event: '*', 
+          schema: 'public', 
+          table: 'events',
+          filter: `workspace_id=eq.${wsId}`
+        }, (payload) => {
+          fetchEvents();
+          if (payload.eventType === 'INSERT') {
+            pushNotification('Workspace Update', 'New event shared by a teammate.', 'creation');
+          }
+        })
+        .subscribe();
+
+      return () => {
+        subscription.unsubscribe();
+      };
+    } else {
+      // Fallback for Local Mode
+      const savedEvents = localStorage.getItem(`synctree_events_${wsId}`);
+      if (savedEvents) setEvents(JSON.parse(savedEvents));
+    }
+  }, [getWorkspaceId, fetchEvents]);
 
   const pushNotification = (title: string, message: string, type: 'creation' | 'update' | 'reminder') => {
     const newNotif: AppNotification = {
@@ -118,25 +122,53 @@ const App: React.FC = () => {
     setNotifications(prev => [newNotif, ...prev]);
   };
 
-  const handleSaveEvent = (eventData: Omit<CalendarEvent, 'id' | 'createdBy' | 'attendees'>) => {
-    let updatedEvents: CalendarEvent[];
-    if (editingEvent) {
-      updatedEvents = events.map(e => e.id === editingEvent.id ? { ...e, ...eventData } : e);
-    } else {
-      const newEvent: CalendarEvent = {
-        ...eventData,
-        id: Math.random().toString(36).substr(2, 9),
-        createdBy: MOCK_USERS[0].name,
-        attendees: [MOCK_USERS[0].id]
-      };
-      updatedEvents = [...events, newEvent];
-      pushNotification('Event Added', `${eventData.title} is now scheduled.`, 'creation');
-    }
+  const handleSaveEvent = async (eventData: Omit<CalendarEvent, 'id' | 'createdBy' | 'attendees'>) => {
+    const wsId = getWorkspaceId();
     
-    setEvents(updatedEvents);
-    broadcastEvents(updatedEvents);
-    setIsModalOpen(false);
-    setEditingEvent(null);
+    if (supabase) {
+      const { error } = await supabase
+        .from('events')
+        .upsert({
+          id: editingEvent?.id, // Supabase will insert if undefined
+          workspace_id: wsId,
+          title: eventData.title,
+          description: eventData.description,
+          date: eventData.date,
+          start_time: eventData.startTime,
+          end_time: eventData.endTime,
+          category: eventData.category,
+          created_by: editingEvent?.createdBy || MOCK_USERS[0].name,
+          attendees: editingEvent?.attendees || [MOCK_USERS[0].id],
+          amount: eventData.amount,
+          transaction_type: eventData.transactionType
+        });
+
+      if (error) {
+        console.error("Supabase Save Error:", error);
+      } else {
+        setIsModalOpen(false);
+        setEditingEvent(null);
+      }
+    } else {
+      // Local fallback
+      let updatedEvents: CalendarEvent[];
+      if (editingEvent) {
+        updatedEvents = events.map(e => e.id === editingEvent.id ? { ...e, ...eventData } : e);
+      } else {
+        const newEvent: CalendarEvent = {
+          ...eventData,
+          id: Math.random().toString(36).substr(2, 9),
+          createdBy: MOCK_USERS[0].name,
+          attendees: [MOCK_USERS[0].id]
+        };
+        updatedEvents = [...events, newEvent];
+        pushNotification('Event Added', `${eventData.title} is now scheduled.`, 'creation');
+      }
+      setEvents(updatedEvents);
+      localStorage.setItem(`synctree_events_${wsId}`, JSON.stringify(updatedEvents));
+      setIsModalOpen(false);
+      setEditingEvent(null);
+    }
   };
 
   const handlePrev = () => {
@@ -232,23 +264,15 @@ const App: React.FC = () => {
                    currentView === 'team' ? 'Directory' : 'Insights'}
                 </h1>
                 
-                {/* AI Status Pill */}
-                <button 
-                  onClick={() => setCurrentView('settings')}
-                  className={`hidden sm:flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border transition-all hover:scale-105 active:scale-95 ${
-                    isAiActive 
-                      ? 'bg-emerald-50 border-emerald-100 text-emerald-600' 
-                      : 'bg-rose-50 border-rose-100 text-rose-600'
-                  }`}
-                >
-                  <span className={`relative flex h-1.5 w-1.5`}>
-                    <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${isAiActive ? 'bg-emerald-400' : 'bg-rose-400'}`}></span>
-                    <span className={`relative inline-flex rounded-full h-1.5 w-1.5 ${isAiActive ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
+                {/* Database Connection Status */}
+                <div className={`hidden sm:flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border ${
+                  dbConnected ? 'bg-indigo-50 border-indigo-100 text-indigo-600' : 'bg-amber-50 border-amber-100 text-amber-600'
+                }`}>
+                  {dbConnected ? <Cloud size={10} /> : <CloudOff size={10} />}
+                  <span className="text-[8px] font-black uppercase tracking-widest">
+                    {dbConnected ? 'Sync Live' : 'Local Only'}
                   </span>
-                  <span className="text-[9px] font-bold tracking-wider uppercase">
-                    {isAiActive ? 'AI Active' : 'AI Setup'}
-                  </span>
-                </button>
+                </div>
               </div>
               <p className="text-[9px] font-medium text-slate-400 uppercase tracking-widest mt-0.5">
                 Workspace: {getWorkspaceId()}
@@ -257,26 +281,6 @@ const App: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2 lg:gap-4">
-            {(currentView === 'overview-month' || currentView === 'overview-year') && (
-              <div className="hidden sm:flex bg-slate-100/50 p-1 rounded-xl gap-0.5 border border-slate-200/20">
-                <ViewToggleButton active={currentView === 'overview-month'} onClick={() => setCurrentView('overview-month')}>Month</ViewToggleButton>
-                <ViewToggleButton active={currentView === 'overview-year'} onClick={() => setCurrentView('overview-year')}>Year</ViewToggleButton>
-              </div>
-            )}
-
-            {(currentView === 'overview-month' || currentView === 'overview-year') && (
-              <div className="flex bg-white border border-slate-100 p-1 rounded-xl shadow-sm">
-                <HeaderIconButton onClick={handlePrev}><ChevronLeft size={16} /></HeaderIconButton>
-                <button 
-                  onClick={() => { setCurrentDate(new Date()); setCurrentView('overview-month'); }}
-                  className="px-3 text-[10px] font-extrabold text-slate-600 hover:text-indigo-600 uppercase tracking-widest"
-                >
-                  Today
-                </button>
-                <HeaderIconButton onClick={handleNext}><ChevronRight size={16} /></HeaderIconButton>
-              </div>
-            )}
-
             <div className="relative">
               <HeaderIconButton onClick={() => setShowNotifications(!showNotifications)} className="relative">
                 <Bell size={18} />
@@ -304,30 +308,6 @@ const App: React.FC = () => {
         </header>
 
         <div className="flex-1 flex flex-col gap-3 lg:gap-4 overflow-hidden animate-page">
-          <div className="px-1 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <div className="flex flex-col gap-0.5">
-              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-1">Collaborators</p>
-              <div className="flex -space-x-2.5">
-                {MOCK_USERS.map((user) => (
-                  <img key={user.id} className="h-8 w-8 rounded-lg ring-2 ring-[#fcfdfe] shadow-sm hover:-translate-y-1 transition-transform cursor-pointer" src={user.avatar} alt={user.name} />
-                ))}
-                <div className="h-8 w-8 rounded-lg ring-2 ring-[#fcfdfe] bg-indigo-50 flex items-center justify-center text-[9px] font-bold text-indigo-600 border border-indigo-200 cursor-pointer">
-                  +12
-                </div>
-              </div>
-            </div>
-            
-            <div className="w-full sm:w-auto flex items-center gap-2">
-              <div className="flex-1 sm:w-64 bg-white rounded-xl px-3 py-1.5 border border-slate-100 flex items-center gap-2 shadow-sm focus-within:ring-2 ring-indigo-500/10 transition-all">
-                <Search size={14} className="text-slate-300" />
-                <input type="text" placeholder="Search events..." className="w-full text-[11px] font-medium outline-none bg-transparent placeholder:text-slate-300" />
-              </div>
-              <button className="p-2 bg-white border border-slate-100 rounded-xl text-slate-400 hover:text-slate-600 shadow-sm">
-                <Activity size={16} />
-              </button>
-            </div>
-          </div>
-
           <div className="flex-1 flex flex-col overflow-hidden">
             {currentView === 'overview-month' && (
               <CalendarGrid 
@@ -409,17 +389,6 @@ const NavButton: React.FC<{ icon: React.ReactNode, label: string, active?: boole
       {icon}
     </span>
     {label}
-  </button>
-);
-
-const ViewToggleButton: React.FC<{ children: React.ReactNode, active: boolean, onClick: () => void }> = ({ children, active, onClick }) => (
-  <button 
-    onClick={onClick}
-    className={`px-4 py-1.5 rounded-lg text-[10px] font-extrabold tracking-widest uppercase transition-all ${
-      active ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-400 hover:text-slate-600'
-    }`}
-  >
-    {children}
   </button>
 );
 

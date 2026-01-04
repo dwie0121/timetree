@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { 
   TrendingUp, 
@@ -7,7 +6,10 @@ import {
   ArrowUpRight, 
   ArrowDownRight, 
   Wallet, 
-  Settings
+  Settings,
+  ShieldCheck,
+  AlertCircle,
+  Database
 } from 'lucide-react';
 import { CalendarEvent } from '../types';
 
@@ -25,13 +27,14 @@ const SettingsView: React.FC<SettingsViewProps> = ({ events }) => {
     .reduce((acc, curr) => acc + (curr.amount || 0), 0);
 
   const netIncome = income - expenses;
+  const isSupabaseConfigured = !!((import.meta as any).env?.VITE_SUPABASE_URL);
 
   return (
     <div className="flex-1 overflow-y-auto bg-white lg:rounded-3xl border border-gray-100 shadow-inner p-6">
       <div className="max-w-4xl mx-auto">
         <div className="mb-10">
-          <h2 className="text-2xl font-bold text-gray-900 mb-1">Workspace Insights</h2>
-          <p className="text-gray-500">Financial summary and system configuration.</p>
+          <h2 className="text-2xl font-bold text-gray-900 mb-1 text-center sm:text-left">Workspace Insights</h2>
+          <p className="text-gray-500 text-center sm:text-left">Financial summary and production system configuration.</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
@@ -78,6 +81,48 @@ const SettingsView: React.FC<SettingsViewProps> = ({ events }) => {
           </div>
         </div>
 
+        {/* Database Status Panel */}
+        <div className="mb-10 bg-slate-900 rounded-[2.5rem] p-8 text-white relative overflow-hidden shadow-2xl">
+          <div className="relative z-10">
+            <div className="flex items-center gap-3 mb-6">
+              <div className={`p-2 rounded-xl ${isSupabaseConfigured ? 'bg-indigo-500/20 text-indigo-400' : 'bg-rose-500/20 text-rose-400'}`}>
+                {isSupabaseConfigured ? <ShieldCheck size={24} /> : <AlertCircle size={24} />}
+              </div>
+              <div>
+                <h3 className="text-xl font-bold">Cloud Infrastructure</h3>
+                <p className="text-slate-400 text-sm">Supabase Realtime Database status</p>
+              </div>
+            </div>
+
+            <div className="bg-slate-800/50 rounded-2xl p-6 border border-slate-700">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <Database size={16} className="text-indigo-400" />
+                  <span className="text-sm font-bold">PostgreSQL Persistence</span>
+                </div>
+                <div className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${isSupabaseConfigured ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}`}>
+                  {isSupabaseConfigured ? 'Connected' : 'Disconnected'}
+                </div>
+              </div>
+
+              <p className="text-sm text-slate-300 mb-6 leading-relaxed">
+                To ensure your events are saved across devices, navigate to your platform settings (e.g. Vercel &gt; Environment Variables) and add:
+              </p>
+              
+              <div className="space-y-2">
+                <div className="flex items-center justify-between p-3 bg-slate-950 rounded-xl border border-slate-800 font-mono text-[11px]">
+                  <span className="text-indigo-400">VITE_SUPABASE_URL</span>
+                  <span className="text-slate-500 truncate ml-4">https://...supabase.co</span>
+                </div>
+                <div className="flex items-center justify-between p-3 bg-slate-950 rounded-xl border border-slate-800 font-mono text-[11px]">
+                  <span className="text-indigo-400">VITE_SUPABASE_ANON_KEY</span>
+                  <span className="text-slate-500 truncate ml-4">eyJhbGciOiJIUzI1...</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div className="bg-gray-50 rounded-[2.5rem] p-8 border border-gray-100">
           <h3 className="font-bold text-gray-800 mb-6 flex items-center gap-2">
             <Settings size={20} className="text-gray-400" />
@@ -94,15 +139,6 @@ const SettingsView: React.FC<SettingsViewProps> = ({ events }) => {
                 <option>USD ($)</option>
                 <option>EUR (€)</option>
               </select>
-            </div>
-            <div className="flex items-center justify-between p-5 bg-white rounded-2xl border border-gray-100 shadow-sm">
-              <div>
-                <p className="font-bold text-gray-900">Financial Notifications</p>
-                <p className="text-xs text-gray-500">Receive alerts for budget changes</p>
-              </div>
-              <div className="w-12 h-6 bg-indigo-600 rounded-full relative cursor-pointer">
-                <div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full shadow-sm"></div>
-              </div>
             </div>
           </div>
         </div>
