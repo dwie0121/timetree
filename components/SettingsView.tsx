@@ -7,12 +7,7 @@ import {
   ArrowUpRight, 
   ArrowDownRight, 
   Wallet, 
-  Settings, 
-  ExternalLink, 
-  ShieldCheck, 
-  AlertCircle,
-  Copy,
-  Terminal
+  Settings
 } from 'lucide-react';
 import { CalendarEvent } from '../types';
 
@@ -30,11 +25,6 @@ const SettingsView: React.FC<SettingsViewProps> = ({ events }) => {
     .reduce((acc, curr) => acc + (curr.amount || 0), 0);
 
   const netIncome = income - expenses;
-  const isApiKeyConfigured = !!process.env.API_KEY && process.env.API_KEY !== 'undefined';
-
-  const copyEnvKey = () => {
-    navigator.clipboard.writeText('API_KEY');
-  };
 
   return (
     <div className="flex-1 overflow-y-auto bg-white lg:rounded-3xl border border-gray-100 shadow-inner p-6">
@@ -84,76 +74,6 @@ const SettingsView: React.FC<SettingsViewProps> = ({ events }) => {
                 <PieChart size={14} />
                 <span>Final workspace balance</span>
               </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Vercel Setup Guide */}
-        <div className="mb-10 bg-slate-900 rounded-[2.5rem] p-8 text-white relative overflow-hidden shadow-2xl">
-          <div className="absolute top-0 right-0 p-12 opacity-5">
-            <Terminal size={120} />
-          </div>
-          
-          <div className="relative z-10">
-            <div className="flex items-center gap-3 mb-6">
-              <div className={`p-2 rounded-xl ${isApiKeyConfigured ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}`}>
-                {isApiKeyConfigured ? <ShieldCheck size={24} /> : <AlertCircle size={24} />}
-              </div>
-              <div>
-                <h3 className="text-xl font-bold">Vercel Deployment Guide</h3>
-                <p className="text-slate-400 text-sm">Configure your Gemini API key for production</p>
-              </div>
-            </div>
-
-            <div className="space-y-6">
-              <div className="bg-slate-800/50 rounded-2xl p-5 border border-slate-700">
-                <p className="text-sm text-slate-300 mb-4 leading-relaxed">
-                  To enable "Magic Create" features in production, you must set your API key in the Vercel Dashboard.
-                </p>
-                <div className="flex flex-col gap-4">
-                  <div className="flex items-start gap-4">
-                    <div className="w-6 h-6 rounded-full bg-indigo-500 flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">1</div>
-                    <div className="text-sm">
-                      <p className="font-bold text-white">Open Vercel Dashboard</p>
-                      <a href="https://vercel.com/dashboard" target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-indigo-300 flex items-center gap-1 mt-1 font-medium transition-colors">
-                        Go to Project Settings <ExternalLink size={12} />
-                      </a>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-start gap-4">
-                    <div className="w-6 h-6 rounded-full bg-indigo-500 flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">2</div>
-                    <div className="text-sm">
-                      <p className="font-bold text-white">Add Environment Variable</p>
-                      <p className="text-slate-400 mt-1">Navigate to <b>Settings &gt; Environment Variables</b> and add the following:</p>
-                      <div className="mt-3 flex items-center gap-2">
-                        <div className="bg-slate-950 px-4 py-2 rounded-lg font-mono text-xs text-indigo-400 border border-slate-700 flex items-center gap-3 group">
-                          API_KEY
-                          <button onClick={copyEnvKey} className="text-slate-500 hover:text-white transition-colors">
-                            <Copy size={14} />
-                          </button>
-                        </div>
-                        <span className="text-slate-500 text-xs">Value: [Your Gemini Key]</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-4">
-                    <div className="w-6 h-6 rounded-full bg-indigo-500 flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">3</div>
-                    <div className="text-sm">
-                      <p className="font-bold text-white">Redeploy</p>
-                      <p className="text-slate-400 mt-1">Trigger a new deployment for changes to take effect.</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {!isApiKeyConfigured && (
-                <div className="bg-rose-500/10 border border-rose-500/20 p-4 rounded-2xl flex items-center gap-3 text-rose-200 text-sm">
-                  <AlertCircle size={18} className="shrink-0" />
-                  <p>AI Features are currently disabled because <b>API_KEY</b> is not set.</p>
-                </div>
-              )}
             </div>
           </div>
         </div>
