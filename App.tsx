@@ -44,7 +44,11 @@ const App: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [dbConnected, setDbConnected] = useState(!!supabase);
   
-  const isAiActive = !!process.env.API_KEY && process.env.API_KEY !== 'undefined';
+  // Safe environment check to prevent crashes
+  const isAiActive = !!(
+    (typeof process !== 'undefined' && process.env?.API_KEY) || 
+    (import.meta as any).env?.VITE_API_KEY
+  );
 
   const getWorkspaceId = useCallback(() => {
     const params = new URLSearchParams(window.location.search);
@@ -61,7 +65,6 @@ const App: React.FC = () => {
     if (error) {
       console.error("Supabase fetch error:", error);
     } else if (data) {
-      // Map Supabase snake_case if necessary, or assume guide schema matches
       const mappedEvents: CalendarEvent[] = data.map(item => ({
         id: item.id,
         title: item.title,
@@ -104,7 +107,6 @@ const App: React.FC = () => {
         subscription.unsubscribe();
       };
     } else {
-      // Fallback for Local Mode
       const savedEvents = localStorage.getItem(`synctree_events_${wsId}`);
       if (savedEvents) setEvents(JSON.parse(savedEvents));
     }
@@ -129,7 +131,7 @@ const App: React.FC = () => {
       const { error } = await supabase
         .from('events')
         .upsert({
-          id: editingEvent?.id, // Supabase will insert if undefined
+          id: editingEvent?.id,
           workspace_id: wsId,
           title: eventData.title,
           description: eventData.description,
@@ -150,7 +152,6 @@ const App: React.FC = () => {
         setEditingEvent(null);
       }
     } else {
-      // Local fallback
       let updatedEvents: CalendarEvent[];
       if (editingEvent) {
         updatedEvents = events.map(e => e.id === editingEvent.id ? { ...e, ...eventData } : e);
@@ -171,21 +172,10 @@ const App: React.FC = () => {
     }
   };
 
-  const handlePrev = () => {
-    if (currentView === 'overview-month') setCurrentDate(addMonths(currentDate, -1));
-    else if (currentView === 'overview-year') setCurrentDate(addYears(currentDate, -1));
-  };
-
-  const handleNext = () => {
-    if (currentView === 'overview-month') setCurrentDate(addMonths(currentDate, 1));
-    else if (currentView === 'overview-year') setCurrentDate(addYears(currentDate, 1));
-  };
-
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
   return (
     <div className="flex h-screen w-full bg-[#fcfdfe] text-slate-900 overflow-hidden">
-      {/* Sidebar */}
       <aside className={`fixed inset-y-0 left-0 z-50 w-64 lg:static lg:block transform transition-transform duration-500 ease-in-out ${
         isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
       }`}>
@@ -248,7 +238,6 @@ const App: React.FC = () => {
         </div>
       </aside>
 
-      {/* Main Content Area */}
       <main className="flex-1 flex flex-col min-w-0 p-3 lg:p-4 overflow-hidden">
         <header className="h-16 lg:h-18 glass rounded-2xl mb-3 px-4 lg:px-6 flex items-center justify-between border border-white/40 shadow-sm z-40">
           <div className="flex items-center gap-4">
@@ -263,8 +252,6 @@ const App: React.FC = () => {
                    currentView === 'schedule' ? 'Timeline' : 
                    currentView === 'team' ? 'Directory' : 'Insights'}
                 </h1>
-                
-                {/* Database Connection Status */}
                 <div className={`hidden sm:flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border ${
                   dbConnected ? 'bg-indigo-50 border-indigo-100 text-indigo-600' : 'bg-amber-50 border-amber-100 text-amber-600'
                 }`}>
@@ -348,7 +335,6 @@ const App: React.FC = () => {
           </div>
         </div>
 
-        {/* Mobile FAB */}
         <button 
           onClick={() => { setEditingEvent(null); setIsModalOpen(true); }}
           className="fixed bottom-6 right-6 lg:hidden w-14 h-14 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-2xl shadow-indigo-300 active:scale-90 transition-all z-40"

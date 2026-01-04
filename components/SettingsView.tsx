@@ -27,7 +27,12 @@ const SettingsView: React.FC<SettingsViewProps> = ({ events }) => {
     .reduce((acc, curr) => acc + (curr.amount || 0), 0);
 
   const netIncome = income - expenses;
-  const isSupabaseConfigured = !!((import.meta as any).env?.VITE_SUPABASE_URL);
+  
+  // Robust check for configuration without crashing if import.meta.env is missing
+  const isSupabaseConfigured = !!(
+    (import.meta as any).env?.VITE_SUPABASE_URL || 
+    (typeof process !== 'undefined' && process.env?.SUPABASE_URL)
+  );
 
   return (
     <div className="flex-1 overflow-y-auto bg-white lg:rounded-3xl border border-gray-100 shadow-inner p-6">
