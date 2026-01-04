@@ -125,7 +125,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ events }) => {
                     <div className="w-6 h-6 rounded-full bg-indigo-500 flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">2</div>
                     <div className="text-sm">
                       <p className="font-bold text-white">Add Environment Variable</p>
-                      <p className="text-slate-400 mt-1">Navigate to <b>Settings {'>'} Environment Variables</b> and add the following:</p>
+                      <p className="text-slate-400 mt-1">Navigate to <b>Settings &gt; Environment Variables</b> and add the following:</p>
                       <div className="mt-3 flex items-center gap-2">
                         <div className="bg-slate-950 px-4 py-2 rounded-lg font-mono text-xs text-indigo-400 border border-slate-700 flex items-center gap-3 group">
                           API_KEY
