@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { TrendingUp, TrendingDown, DollarSign, PieChart, ArrowUpRight, ArrowDownRight, Wallet } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, PieChart, ArrowUpRight, ArrowDownRight, Wallet, Settings } from 'lucide-react';
 import { CalendarEvent } from '../types';
 
 interface SettingsViewProps {
@@ -35,7 +35,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ events }) => {
             <div className="flex flex-col">
               <span className="text-xs font-bold text-emerald-700 uppercase tracking-widest mb-2">Gross Income</span>
               <div className="flex items-baseline gap-1">
-                <span className="text-3xl font-black text-emerald-900">${income.toLocaleString()}</span>
+                <span className="text-3xl font-black text-emerald-900">₱{income.toLocaleString()}</span>
               </div>
               <div className="mt-4 flex items-center gap-1 text-xs font-bold text-emerald-600">
                 <ArrowUpRight size={14} />
@@ -52,7 +52,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ events }) => {
             <div className="flex flex-col">
               <span className="text-xs font-bold text-rose-700 uppercase tracking-widest mb-2">Total Expenses</span>
               <div className="flex items-baseline gap-1">
-                <span className="text-3xl font-black text-rose-900">${expenses.toLocaleString()}</span>
+                <span className="text-3xl font-black text-rose-900">₱{expenses.toLocaleString()}</span>
               </div>
               <div className="mt-4 flex items-center gap-1 text-xs font-bold text-rose-600">
                 <ArrowDownRight size={14} />
@@ -69,7 +69,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ events }) => {
             <div className="flex flex-col">
               <span className="text-xs font-bold text-blue-100 uppercase tracking-widest mb-2">Net Income</span>
               <div className="flex items-baseline gap-1">
-                <span className="text-3xl font-black text-white">${netIncome.toLocaleString()}</span>
+                <span className="text-3xl font-black text-white">₱{netIncome.toLocaleString()}</span>
               </div>
               <div className="mt-4 flex items-center gap-1 text-xs font-bold text-blue-100">
                 <PieChart size={14} />
@@ -91,9 +91,9 @@ const SettingsView: React.FC<SettingsViewProps> = ({ events }) => {
                 <p className="text-xs text-gray-500">Default currency for all transactions</p>
               </div>
               <select className="bg-gray-50 border-none text-sm font-bold p-2 rounded-xl outline-none">
+                <option>PHP (₱)</option>
                 <option>USD ($)</option>
                 <option>EUR (€)</option>
-                <option>GBP (£)</option>
               </select>
             </div>
             <div className="flex items-center justify-between p-4 bg-white rounded-2xl border border-gray-100">
@@ -111,7 +111,5 @@ const SettingsView: React.FC<SettingsViewProps> = ({ events }) => {
     </div>
   );
 };
-
-import { Settings } from 'lucide-react';
 
 export default SettingsView;

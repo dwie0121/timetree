@@ -1,9 +1,9 @@
 
 import React from 'react';
-import { format, parseISO, isPast } from 'date-fns';
+import { format, parseISO, isPast, isToday } from 'date-fns';
 import { CalendarEvent } from '../types';
 import { CATEGORIES } from '../constants';
-import { Clock, Calendar as CalendarIcon, DollarSign } from 'lucide-react';
+import { Clock, Calendar as CalendarIcon } from 'lucide-react';
 
 interface ScheduleViewProps {
   events: CalendarEvent[];
@@ -49,8 +49,8 @@ const ScheduleView: React.FC<ScheduleViewProps> = ({ events, onEventClick }) => 
                     </span>
                     {event.amount && (
                       <span className={`flex items-center text-[10px] font-bold ${event.transactionType === 'income' ? 'text-green-600' : 'text-rose-600'}`}>
-                        <DollarSign size={10} />
-                        {event.amount}
+                        <span className="mr-0.5">₱</span>
+                        {event.amount.toLocaleString()}
                       </span>
                     )}
                   </div>
@@ -74,8 +74,5 @@ const ScheduleView: React.FC<ScheduleViewProps> = ({ events, onEventClick }) => 
     </div>
   );
 };
-
-// Local isToday helper to avoid extra imports if possible, or just use date-fns
-import { isToday } from 'date-fns';
 
 export default ScheduleView;

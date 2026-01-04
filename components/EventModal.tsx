@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { X, Sparkles, Clock, AlignLeft, Calendar as CalendarIcon, Loader2, DollarSign } from 'lucide-react';
+import { X, Sparkles, Clock, AlignLeft, Calendar as CalendarIcon, Loader2 } from 'lucide-react';
 import { CalendarEvent, Category } from '../types';
 import { CATEGORIES } from '../constants';
 import { parseEventFromNaturalLanguage } from '../services/geminiService';
@@ -85,8 +85,8 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, initia
               </label>
               <div className="flex gap-2">
                 <input 
-                  type="text"
-                  placeholder="e.g. Client payment $500 today"
+                  type="text" 
+                  placeholder="e.g. Salary ₱50000 today"
                   value={magicInput}
                   onChange={(e) => setMagicInput(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleMagicParse()}
@@ -138,7 +138,7 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, initia
             {/* Income/Expense Section */}
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2 bg-gray-50 px-3 py-2 rounded-xl border border-gray-100 flex-1">
-                <DollarSign size={18} className="text-gray-400" />
+                <span className="text-gray-400 font-bold ml-1">₱</span>
                 <input 
                   type="number"
                   placeholder="Amount"
