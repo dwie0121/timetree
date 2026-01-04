@@ -1,26 +1,33 @@
 import { createClient } from '@supabase/supabase-js';
 
 /**
- * Safely access environment variables. 
- * In standard Vite environments, these are on import.meta.env.
- * We use a fallback check to prevent runtime crashes if the env object is undefined.
+ * Robust environment variable access to prevent runtime crashes.
  */
-const getEnvVar = (key: string): string | undefined => {
+export const safeGetEnv = (key: string): string | undefined => {
   try {
-    // Attempt to access via import.meta.env (Vite standard)
-    const env = (import.meta as any).env;
-    if (env && env[key]) return env[key];
+    // Check import.meta.env (Vite)
+    const metaEnv = (import.meta as any).env;
+    if (metaEnv && metaEnv[key]) return metaEnv[key];
+
+    // Check process.env (Node fallback)
+    if (typeof process !== 'undefined' && process.env && process.env[key]) {
+      return process.env[key];
+    }
   } catch (e) {
-    // Fallback if import.meta is restricted or env is missing
+    // Silent catch for restricted environments
   }
   return undefined;
 };
 
-const supabaseUrl = getEnvVar('VITE_SUPABASE_URL');
-const supabaseAnonKey = getEnvVar('VITE_SUPABASE_ANON_KEY');
+// Use provided credentials as defaults if environment variables are missing
+const DEFAULT_URL = 'https://mfuzfqrcnucgkpvhierx.supabase.co';
+const DEFAULT_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1mdXpmcXJjbnVjZ2twdmhpZXJ4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc0NTI4NDcsImV4cCI6MjA4MzAyODg0N30.oSpbBxYZWnS4jLlPxJOQtWec5RPXXzt6SNfKYwuxIi0';
+
+const supabaseUrl = safeGetEnv('VITE_SUPABASE_URL') || safeGetEnv('SUPABASE_URL') || DEFAULT_URL;
+const supabaseAnonKey = safeGetEnv('VITE_SUPABASE_ANON_KEY') || safeGetEnv('SUPABASE_ANON_KEY') || DEFAULT_KEY;
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn("Supabase credentials missing. SyncTree is running in Local Mode (LocalStorage/BroadcastChannel).");
+  console.warn("SyncTree: Supabase credentials not found. Operating in local-sync mode.");
 }
 
 export const supabase = (supabaseUrl && supabaseAnonKey) 

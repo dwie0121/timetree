@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Plus, 
@@ -27,7 +28,7 @@ import NotificationPanel from './components/NotificationPanel';
 import ShareModal from './components/ShareModal';
 import { CalendarEvent, AppNotification } from './types';
 import { MOCK_USERS } from './constants';
-import { supabase } from './services/supabaseClient';
+import { supabase, safeGetEnv } from './services/supabaseClient';
 
 type AppView = 'overview-month' | 'overview-year' | 'schedule' | 'team' | 'settings';
 
@@ -44,11 +45,8 @@ const App: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [dbConnected, setDbConnected] = useState(!!supabase);
   
-  // Safe environment check to prevent crashes
-  const isAiActive = !!(
-    (typeof process !== 'undefined' && process.env?.API_KEY) || 
-    (import.meta as any).env?.VITE_API_KEY
-  );
+  // Safe environment check using utility
+  const isAiActive = !!(safeGetEnv('VITE_API_KEY') || safeGetEnv('API_KEY'));
 
   const getWorkspaceId = useCallback(() => {
     const params = new URLSearchParams(window.location.search);

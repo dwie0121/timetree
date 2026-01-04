@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { 
   TrendingUp, 
@@ -12,6 +13,7 @@ import {
   Database
 } from 'lucide-react';
 import { CalendarEvent } from '../types';
+import { safeGetEnv } from '../services/supabaseClient';
 
 interface SettingsViewProps {
   events: CalendarEvent[];
@@ -28,11 +30,8 @@ const SettingsView: React.FC<SettingsViewProps> = ({ events }) => {
 
   const netIncome = income - expenses;
   
-  // Robust check for configuration without crashing if import.meta.env is missing
-  const isSupabaseConfigured = !!(
-    (import.meta as any).env?.VITE_SUPABASE_URL || 
-    (typeof process !== 'undefined' && process.env?.SUPABASE_URL)
-  );
+  // Safe config check using utility
+  const isSupabaseConfigured = !!(safeGetEnv('VITE_SUPABASE_URL') || safeGetEnv('SUPABASE_URL'));
 
   return (
     <div className="flex-1 overflow-y-auto bg-white lg:rounded-3xl border border-gray-100 shadow-inner p-6">
