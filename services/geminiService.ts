@@ -1,9 +1,13 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
+/**
+ * Parses a natural language string into a structured calendar event using Gemini.
+ * Uses gemini-3-flash-preview for basic text parsing tasks.
+ * Re-initializes GoogleGenAI inside the function to ensure current API key usage.
+ */
 export async function parseEventFromNaturalLanguage(prompt: string) {
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   try {
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
@@ -21,7 +25,7 @@ export async function parseEventFromNaturalLanguage(prompt: string) {
             endTime: { type: Type.STRING, description: "24h format HH:mm" },
             category: { 
               type: Type.STRING, 
-              enum: ['Work', 'Personal', 'Family', 'Social', 'Important'] 
+              description: "The category of the event",
             },
             description: { type: Type.STRING }
           },

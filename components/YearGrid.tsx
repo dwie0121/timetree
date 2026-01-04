@@ -2,12 +2,9 @@
 import React from 'react';
 import { 
   format, 
-  startOfYear, 
   eachMonthOfInterval, 
   endOfYear, 
-  startOfMonth, 
   endOfMonth, 
-  startOfWeek, 
   endOfWeek, 
   eachDayOfInterval, 
   isSameDay,
@@ -23,7 +20,8 @@ interface YearGridProps {
 }
 
 const YearGrid: React.FC<YearGridProps> = ({ currentDate, events, onMonthClick }) => {
-  const yearStart = startOfYear(currentDate);
+  // Fix: Use native Date logic for startOfYear as member is missing from date-fns
+  const yearStart = new Date(currentDate.getFullYear(), 0, 1);
   const yearEnd = endOfYear(yearStart);
   const months = eachMonthOfInterval({ start: yearStart, end: yearEnd });
 
@@ -55,9 +53,14 @@ const YearGrid: React.FC<YearGridProps> = ({ currentDate, events, onMonthClick }
 };
 
 const renderMiniMonth = (month: Date, events: CalendarEvent[]) => {
-  const monthStart = startOfMonth(month);
+  // Fix: Use native Date logic for startOfMonth as member is missing from date-fns
+  const monthStart = new Date(month.getFullYear(), month.getMonth(), 1);
   const monthEnd = endOfMonth(monthStart);
-  const startDate = startOfWeek(monthStart);
+  
+  // Fix: Use native Date logic for startOfWeek as member is missing from date-fns
+  const startDate = new Date(monthStart);
+  startDate.setDate(monthStart.getDate() - monthStart.getDay());
+  
   const endDate = endOfWeek(monthEnd);
 
   const days = eachDayOfInterval({ start: startDate, end: endDate });

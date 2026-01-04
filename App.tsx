@@ -17,7 +17,8 @@ import {
   MoreVertical,
   Activity
 } from 'lucide-react';
-import { format, addMonths, subMonths, addYears, subYears } from 'date-fns';
+// Fix: Removed missing subMonths and subYears, using addMonths/addYears instead
+import { format, addMonths, addYears } from 'date-fns';
 import CalendarGrid from './components/CalendarGrid';
 import YearGrid from './components/YearGrid';
 import ScheduleView from './components/ScheduleView';
@@ -139,8 +140,9 @@ const App: React.FC = () => {
   };
 
   const handlePrev = () => {
-    if (currentView === 'overview-month') setCurrentDate(subMonths(currentDate, 1));
-    else if (currentView === 'overview-year') setCurrentDate(subYears(currentDate, 1));
+    // Fix: Using addMonths(..., -1) and addYears(..., -1) instead of subMonths/subYears
+    if (currentView === 'overview-month') setCurrentDate(addMonths(currentDate, -1));
+    else if (currentView === 'overview-year') setCurrentDate(addYears(currentDate, -1));
   };
 
   const handleNext = () => {

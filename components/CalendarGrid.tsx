@@ -2,9 +2,7 @@
 import React from 'react';
 import { 
   format, 
-  startOfMonth, 
   endOfMonth, 
-  startOfWeek, 
   endOfWeek, 
   eachDayOfInterval, 
   isSameMonth, 
@@ -22,9 +20,14 @@ interface CalendarGridProps {
 }
 
 const CalendarGrid: React.FC<CalendarGridProps> = ({ currentMonth, events, onDateClick, onEventClick }) => {
-  const monthStart = startOfMonth(currentMonth);
+  // Fix: Use native Date logic for startOfMonth as member is missing from date-fns
+  const monthStart = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
   const monthEnd = endOfMonth(monthStart);
-  const startDate = startOfWeek(monthStart);
+  
+  // Fix: Use native Date logic for startOfWeek as member is missing from date-fns
+  const startDate = new Date(monthStart);
+  startDate.setDate(monthStart.getDate() - monthStart.getDay());
+  
   const endDate = endOfWeek(monthEnd);
 
   const days = eachDayOfInterval({
