@@ -11,13 +11,12 @@ import {
   Settings,
   Users,
   LayoutDashboard,
-  CalendarDays,
   List,
   Share2,
-  MoreVertical,
-  Activity
+  Activity,
+  AlertCircle,
+  CheckCircle2
 } from 'lucide-react';
-// Fix: Removed missing subMonths and subYears, using addMonths/addYears instead
 import { format, addMonths, addYears } from 'date-fns';
 import CalendarGrid from './components/CalendarGrid';
 import YearGrid from './components/YearGrid';
@@ -45,6 +44,7 @@ const App: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   
   const syncChannel = useRef<BroadcastChannel | null>(null);
+  const isAiActive = !!process.env.API_KEY && process.env.API_KEY !== 'undefined';
 
   const getWorkspaceId = () => {
     const params = new URLSearchParams(window.location.search);
@@ -140,7 +140,6 @@ const App: React.FC = () => {
   };
 
   const handlePrev = () => {
-    // Fix: Using addMonths(..., -1) and addYears(..., -1) instead of subMonths/subYears
     if (currentView === 'overview-month') setCurrentDate(addMonths(currentDate, -1));
     else if (currentView === 'overview-year') setCurrentDate(addYears(currentDate, -1));
   };
@@ -154,7 +153,7 @@ const App: React.FC = () => {
 
   return (
     <div className="flex h-screen w-full bg-[#fcfdfe] text-slate-900 overflow-hidden">
-      {/* Sidebar - Floating Design */}
+      {/* Sidebar */}
       <aside className={`fixed inset-y-0 left-0 z-50 w-72 lg:static lg:block transform transition-transform duration-500 ease-in-out ${
         isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
       }`}>
@@ -200,10 +199,7 @@ const App: React.FC = () => {
 
           <div className="mt-auto p-8 bg-slate-50/50">
             <div className="flex items-center gap-4 mb-4">
-              <div className="relative group">
-                <img src={MOCK_USERS[0].avatar} className="w-12 h-12 rounded-2xl object-cover ring-4 ring-white shadow-md group-hover:scale-110 transition-transform" alt="User" />
-                <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 border-2 border-white rounded-full"></div>
-              </div>
+              <img src={MOCK_USERS[0].avatar} className="w-12 h-12 rounded-2xl object-cover ring-4 ring-white shadow-md" alt="User" />
               <div className="flex flex-col min-w-0">
                 <span className="text-sm font-bold text-slate-900 truncate">{MOCK_USERS[0].name}</span>
                 <span className="text-xs font-medium text-slate-400">Workspace Owner</span>
@@ -213,7 +209,7 @@ const App: React.FC = () => {
               onClick={() => setIsShareModalOpen(true)}
               className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl text-xs font-bold transition-all shadow-lg shadow-indigo-100 flex items-center justify-center gap-2 group"
             >
-              <Share2 size={16} className="group-hover:rotate-12 transition-transform" />
+              <Share2 size={16} />
               Invite Team
             </button>
           </div>
@@ -235,13 +231,24 @@ const App: React.FC = () => {
                    currentView === 'schedule' ? 'Workspace Timeline' : 
                    currentView === 'team' ? 'Member Directory' : 'System Insights'}
                 </h1>
-                <div className="hidden sm:flex items-center gap-2 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100">
+                
+                {/* AI Status Pill */}
+                <button 
+                  onClick={() => setCurrentView('settings')}
+                  className={`hidden sm:flex items-center gap-2 px-3 py-1 rounded-full border transition-all hover:scale-105 active:scale-95 ${
+                    isAiActive 
+                      ? 'bg-emerald-50 border-emerald-100 text-emerald-600' 
+                      : 'bg-rose-50 border-rose-100 text-rose-600'
+                  }`}
+                >
                   <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                    <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${isAiActive ? 'bg-emerald-400' : 'bg-rose-400'}`}></span>
+                    <span className={`relative inline-flex rounded-full h-2 w-2 ${isAiActive ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
                   </span>
-                  <span className="text-[10px] font-bold text-emerald-600 tracking-wider uppercase">Live Sync</span>
-                </div>
+                  <span className="text-[10px] font-bold tracking-wider uppercase">
+                    {isAiActive ? 'AI Ready' : 'AI Offline (Setup required)'}
+                  </span>
+                </button>
               </div>
               <p className="text-[10px] lg:text-xs font-medium text-slate-400 uppercase tracking-[0.2em] mt-0.5">
                 ID: {getWorkspaceId()}
@@ -250,7 +257,6 @@ const App: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-3 lg:gap-5">
-            {/* View Selectors */}
             {(currentView === 'overview-month' || currentView === 'overview-year') && (
               <div className="hidden sm:flex bg-slate-100/50 p-1.5 rounded-2xl gap-1 border border-slate-200/20">
                 <ViewToggleButton active={currentView === 'overview-month'} onClick={() => setCurrentView('overview-month')}>Month</ViewToggleButton>
@@ -258,7 +264,6 @@ const App: React.FC = () => {
               </div>
             )}
 
-            {/* Date Nav */}
             {(currentView === 'overview-month' || currentView === 'overview-year') && (
               <div className="flex bg-white border border-slate-100 p-1.5 rounded-2xl shadow-sm">
                 <HeaderIconButton onClick={handlePrev}><ChevronLeft size={20} /></HeaderIconButton>
@@ -298,7 +303,6 @@ const App: React.FC = () => {
           </div>
         </header>
 
-        {/* Dynamic Content View Container */}
         <div className="flex-1 flex flex-col gap-6 overflow-hidden animate-page">
           <div className="px-2 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="flex flex-col gap-1">
@@ -306,14 +310,7 @@ const App: React.FC = () => {
               <div className="flex -space-x-4">
                 {MOCK_USERS.map((user) => (
                   <div key={user.id} className="relative group cursor-pointer">
-                    <img 
-                      className="h-11 w-11 rounded-2xl ring-4 ring-[#fcfdfe] shadow-lg group-hover:-translate-y-2 group-hover:rotate-6 transition-all duration-300" 
-                      src={user.avatar} 
-                      alt={user.name} 
-                    />
-                    <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[10px] font-bold px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
-                      {user.name}
-                    </div>
+                    <img className="h-11 w-11 rounded-2xl ring-4 ring-[#fcfdfe] shadow-lg group-hover:-translate-y-2 group-hover:rotate-6 transition-all duration-300" src={user.avatar} alt={user.name} />
                   </div>
                 ))}
                 <div className="h-11 w-11 rounded-2xl ring-4 ring-[#fcfdfe] bg-indigo-50 flex items-center justify-center text-[11px] font-bold text-indigo-600 border-2 border-dashed border-indigo-200 hover:bg-indigo-100 transition-colors cursor-pointer">
@@ -333,7 +330,6 @@ const App: React.FC = () => {
             </div>
           </div>
 
-          {/* Render Area */}
           <div className="flex-1 flex flex-col overflow-hidden">
             {currentView === 'overview-month' && (
               <CalendarGrid 
@@ -373,14 +369,6 @@ const App: React.FC = () => {
             {currentView === 'settings' && <SettingsView events={events} />}
           </div>
         </div>
-
-        {/* Mobile FAB */}
-        <button 
-          onClick={() => { setEditingEvent(null); setIsModalOpen(true); }}
-          className="fixed bottom-8 right-8 lg:hidden w-16 h-16 bg-indigo-600 rounded-[2rem] flex items-center justify-center text-white shadow-2xl shadow-indigo-400 active:scale-90 active:rotate-45 transition-all z-40"
-        >
-          <Plus size={32} />
-        </button>
       </main>
 
       <EventModal 
