@@ -9,8 +9,6 @@ import {
   eachDayOfInterval, 
   isSameMonth, 
   isSameDay, 
-  addMonths, 
-  subMonths,
   isToday
 } from 'date-fns';
 import { CalendarEvent } from '../types';
@@ -37,10 +35,10 @@ const CalendarGrid: React.FC<CalendarGridProps> = ({ currentMonth, events, onDat
   const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
   return (
-    <div className="flex-1 flex flex-col bg-white overflow-hidden shadow-inner lg:rounded-3xl border border-gray-100">
-      <div className="calendar-grid border-b border-gray-100 bg-gray-50/50">
+    <div className="flex-1 flex flex-col bg-white overflow-hidden rounded-[2.5rem] border border-slate-100 shadow-2xl shadow-slate-200/40">
+      <div className="calendar-grid bg-slate-50/50 border-b border-slate-100">
         {weekDays.map((day) => (
-          <div key={day} className="py-3 text-center text-xs font-bold text-gray-400 uppercase tracking-widest">
+          <div key={day} className="py-5 text-center text-[10px] font-extrabold text-slate-300 uppercase tracking-[0.2em]">
             {day}
           </div>
         ))}
@@ -54,25 +52,25 @@ const CalendarGrid: React.FC<CalendarGridProps> = ({ currentMonth, events, onDat
             <div 
               key={day.toString()} 
               onClick={() => onDateClick(day)}
-              className={`min-h-[100px] border-r border-b border-gray-100 p-1 flex flex-col group cursor-pointer hover:bg-gray-50/50 transition-colors ${
-                !isCurrentMonth ? 'bg-gray-50/30' : ''
+              className={`min-h-[120px] border-r border-b border-slate-50 p-2 flex flex-col group cursor-pointer transition-all hover:bg-indigo-50/20 ${
+                !isCurrentMonth ? 'bg-slate-50/20' : ''
               }`}
             >
-              <div className="flex justify-between items-start mb-1 px-1">
-                <span className={`text-xs font-semibold p-1.5 rounded-full w-7 h-7 flex items-center justify-center transition-all ${
+              <div className="flex justify-between items-center mb-2 px-1">
+                <span className={`text-xs font-bold w-8 h-8 flex items-center justify-center rounded-xl transition-all ${
                   isToday(day) 
-                    ? 'bg-blue-600 text-white shadow-md' 
-                    : isCurrentMonth ? 'text-gray-700' : 'text-gray-300'
+                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200 ring-4 ring-indigo-50' 
+                    : isCurrentMonth ? 'text-slate-800 group-hover:text-indigo-600' : 'text-slate-200'
                 }`}>
                   {format(day, 'd')}
                 </span>
                 {dayEvents.length > 3 && (
-                  <span className="text-[10px] text-gray-400 font-bold bg-gray-100 px-1.5 py-0.5 rounded-md">
+                  <span className="text-[9px] font-black text-slate-400 bg-slate-100 px-2 py-0.5 rounded-lg border border-slate-200">
                     +{dayEvents.length - 3}
                   </span>
                 )}
               </div>
-              <div className="space-y-1 overflow-y-auto overflow-x-hidden max-h-[80px] scrollbar-hide">
+              <div className="space-y-1.5 overflow-hidden">
                 {dayEvents.slice(0, 3).map(event => (
                   <div 
                     key={event.id}
@@ -80,10 +78,10 @@ const CalendarGrid: React.FC<CalendarGridProps> = ({ currentMonth, events, onDat
                       e.stopPropagation();
                       onEventClick(event);
                     }}
-                    className={`text-[10px] sm:text-[11px] px-2 py-1 rounded-lg truncate font-medium flex items-center gap-1.5 transition-all hover:brightness-95 active:scale-95 border-l-2 shadow-sm ${CATEGORIES[event.category].bg} ${CATEGORIES[event.category].color} border-l-current`}
+                    className={`group/event text-[10px] px-2.5 py-1.5 rounded-xl truncate font-bold flex items-center gap-2 transition-all hover:scale-[1.03] active:scale-95 border border-transparent shadow-sm ${CATEGORIES[event.category].bg} ${CATEGORIES[event.category].color}`}
                   >
-                    <span className="shrink-0">{CATEGORIES[event.category].icon}</span>
-                    <span className="truncate">{event.title}</span>
+                    <div className="w-1.5 h-1.5 rounded-full bg-current opacity-60"></div>
+                    <span className="truncate tracking-tight">{event.title}</span>
                   </div>
                 ))}
               </div>

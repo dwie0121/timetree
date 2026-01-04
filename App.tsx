@@ -13,7 +13,9 @@ import {
   LayoutDashboard,
   CalendarDays,
   List,
-  Share2
+  Share2,
+  MoreVertical,
+  Activity
 } from 'lucide-react';
 import { format, addMonths, subMonths, addYears, subYears } from 'date-fns';
 import CalendarGrid from './components/CalendarGrid';
@@ -41,27 +43,22 @@ const App: React.FC = () => {
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   
-  // Real-time Sync Reference
   const syncChannel = useRef<BroadcastChannel | null>(null);
 
-  // Get Workspace ID from URL
   const getWorkspaceId = () => {
     const params = new URLSearchParams(window.location.search);
-    return params.get('ws') || 'default-workspace';
+    return params.get('ws') || 'personal-hub';
   };
 
-  // Initialize Sync and Data
   useEffect(() => {
     const wsId = getWorkspaceId();
-    
-    // Set up real-time broadcast channel
     syncChannel.current = new BroadcastChannel(`synctree_ws_${wsId}`);
     
     syncChannel.current.onmessage = (event) => {
-      const { type, data, sender } = event.data;
+      const { type, data } = event.data;
       if (type === 'SYNC_EVENTS') {
         setEvents(data);
-        pushNotification('Workspace Updated', `Someone updated the shared calendar.`, 'update');
+        pushNotification('Workspace Updated', `Shared calendar sync completed.`, 'update');
       }
     };
 
@@ -73,12 +70,12 @@ const App: React.FC = () => {
     } else {
       const initialEvent: CalendarEvent = {
         id: 'initial-1',
-        title: 'Welcome to SyncTree! 👋',
-        description: 'Collaborate with your team easily.',
+        title: 'Launch SyncTree 🚀',
+        description: 'Welcome to your collaborative workspace.',
         date: new Date().toISOString().split('T')[0],
-        startTime: '10:00',
-        endTime: '11:00',
-        category: 'Social',
+        startTime: '09:00',
+        endTime: '10:00',
+        category: 'Work',
         createdBy: 'Alex Rivera',
         attendees: ['1'],
         amount: 0,
@@ -96,22 +93,15 @@ const App: React.FC = () => {
     };
   }, []);
 
-  // Sync to Local Storage and Broadcast
   useEffect(() => {
     const wsId = getWorkspaceId();
     localStorage.setItem(`synctree_events_${wsId}`, JSON.stringify(events));
   }, [events]);
 
-  useEffect(() => {
-    const wsId = getWorkspaceId();
-    localStorage.setItem(`synctree_notifications_${wsId}`, JSON.stringify(notifications));
-  }, [notifications]);
-
   const broadcastEvents = (updatedEvents: CalendarEvent[]) => {
     syncChannel.current?.postMessage({
       type: 'SYNC_EVENTS',
-      data: updatedEvents,
-      sender: MOCK_USERS[0].name
+      data: updatedEvents
     });
   };
 
@@ -131,7 +121,6 @@ const App: React.FC = () => {
     let updatedEvents: CalendarEvent[];
     if (editingEvent) {
       updatedEvents = events.map(e => e.id === editingEvent.id ? { ...e, ...eventData } : e);
-      pushNotification('Event Updated', `${eventData.title} was changed.`, 'update');
     } else {
       const newEvent: CalendarEvent = {
         ...eventData,
@@ -140,11 +129,11 @@ const App: React.FC = () => {
         attendees: [MOCK_USERS[0].id]
       };
       updatedEvents = [...events, newEvent];
-      pushNotification('New Event Created', `${MOCK_USERS[0].name} added "${eventData.title}"`, 'creation');
+      pushNotification('Event Added', `${eventData.title} is now scheduled.`, 'creation');
     }
     
     setEvents(updatedEvents);
-    broadcastEvents(updatedEvents); // Broadcast to other tabs
+    broadcastEvents(updatedEvents);
     setIsModalOpen(false);
     setEditingEvent(null);
   };
@@ -159,174 +148,135 @@ const App: React.FC = () => {
     else if (currentView === 'overview-year') setCurrentDate(addYears(currentDate, 1));
   };
 
-  const getViewTitle = () => {
-    switch (currentView) {
-      case 'overview-month': return format(currentDate, 'MMMM yyyy');
-      case 'overview-year': return format(currentDate, 'yyyy');
-      case 'schedule': return 'My Schedule';
-      case 'team': return 'Team Shared';
-      case 'settings': return 'Settings & Finance';
-      default: return 'SyncTree';
-    }
-  };
-
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
-  const renderContent = () => {
-    switch (currentView) {
-      case 'overview-month':
-        return (
-          <CalendarGrid 
-            currentMonth={currentDate} 
-            events={events}
-            onDateClick={(date) => {
-              setSelectedDate(format(date, 'yyyy-MM-dd'));
-              setIsModalOpen(true);
-              setEditingEvent(null);
-            }}
-            onEventClick={(event) => {
-              setEditingEvent(event);
-              setIsModalOpen(true);
-            }}
-          />
-        );
-      case 'overview-year':
-        return (
-          <YearGrid 
-            currentDate={currentDate}
-            events={events}
-            onMonthClick={(month) => {
-              setCurrentDate(month);
-              setCurrentView('overview-month');
-            }}
-          />
-        );
-      case 'schedule':
-        return (
-          <ScheduleView 
-            events={events}
-            onEventClick={(event) => {
-              setEditingEvent(event);
-              setIsModalOpen(true);
-            }}
-          />
-        );
-      case 'team':
-        return <TeamView />;
-      case 'settings':
-        return <SettingsView events={events} />;
-      default:
-        return null;
-    }
-  };
-
   return (
-    <div className="flex h-screen w-full bg-[#f9fafb] text-gray-900 overflow-hidden font-inter">
-      <aside className={`fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-gray-100 transform transition-transform duration-300 lg:translate-x-0 lg:static ${
-        isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+    <div className="flex h-screen w-full bg-[#fcfdfe] text-slate-900 overflow-hidden">
+      {/* Sidebar - Floating Design */}
+      <aside className={`fixed inset-y-0 left-0 z-50 w-72 lg:static lg:block transform transition-transform duration-500 ease-in-out ${
+        isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
       }`}>
-        <div className="flex flex-col h-full p-6">
-          <div className="flex items-center gap-3 mb-10 px-2">
-            <div className="bg-blue-600 p-2 rounded-xl shadow-lg shadow-blue-200">
-              <CalendarIcon className="text-white" size={24} />
-            </div>
-            <span className="text-xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-700 to-indigo-600">SyncTree</span>
-          </div>
-          <nav className="space-y-1">
-            <button className="w-full text-left" onClick={() => setCurrentView('overview-month')}>
-              <NavItem icon={<LayoutDashboard size={20} />} label="Overview" active={currentView === 'overview-month' || currentView === 'overview-year'} />
-            </button>
-            <button className="w-full text-left" onClick={() => setCurrentView('schedule')}>
-              <NavItem icon={<List size={20} />} label="My Schedule" active={currentView === 'schedule'} />
-            </button>
-            <button className="w-full text-left" onClick={() => setCurrentView('team')}>
-              <NavItem icon={<Users size={20} />} label="Team Shared" active={currentView === 'team'} />
-            </button>
-            <button className="w-full text-left" onClick={() => setCurrentView('settings')}>
-              <NavItem icon={<Settings size={20} />} label="Settings" active={currentView === 'settings'} />
-            </button>
-          </nav>
-          <div className="mt-auto pt-8 border-t border-gray-50">
-            <div className="flex items-center gap-3 px-2">
-              <img src={MOCK_USERS[0].avatar} alt="User" className="w-10 h-10 rounded-full border-2 border-white shadow-sm" />
-              <div className="min-w-0">
-                <p className="text-sm font-bold text-gray-900 truncate">{MOCK_USERS[0].name}</p>
-                <p className="text-xs text-gray-500 truncate">Admin</p>
+        <div className="flex flex-col h-full m-4 lg:mr-0 lg:my-6 lg:ml-6 bg-white rounded-[2.5rem] shadow-2xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
+          <div className="p-8">
+            <div className="flex items-center gap-4 mb-12">
+              <div className="bg-indigo-600 p-3 rounded-2xl shadow-xl shadow-indigo-200 rotate-3 hover:rotate-0 transition-transform cursor-pointer">
+                <CalendarIcon className="text-white" size={26} />
+              </div>
+              <div className="flex flex-col">
+                <span className="text-xl font-extrabold tracking-tight text-slate-900">SyncTree</span>
+                <span className="text-[10px] font-bold text-indigo-500 tracking-widest uppercase">Workspace</span>
               </div>
             </div>
+
+            <nav className="space-y-2">
+              <NavButton 
+                onClick={() => setCurrentView('overview-month')} 
+                icon={<LayoutDashboard size={20} />} 
+                label="Dashboard" 
+                active={currentView === 'overview-month' || currentView === 'overview-year'} 
+              />
+              <NavButton 
+                onClick={() => setCurrentView('schedule')} 
+                icon={<List size={20} />} 
+                label="Timeline" 
+                active={currentView === 'schedule'} 
+              />
+              <NavButton 
+                onClick={() => setCurrentView('team')} 
+                icon={<Users size={20} />} 
+                label="Members" 
+                active={currentView === 'team'} 
+              />
+              <NavButton 
+                onClick={() => setCurrentView('settings')} 
+                icon={<Settings size={20} />} 
+                label="Insights" 
+                active={currentView === 'settings'} 
+              />
+            </nav>
+          </div>
+
+          <div className="mt-auto p-8 bg-slate-50/50">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="relative group">
+                <img src={MOCK_USERS[0].avatar} className="w-12 h-12 rounded-2xl object-cover ring-4 ring-white shadow-md group-hover:scale-110 transition-transform" alt="User" />
+                <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 border-2 border-white rounded-full"></div>
+              </div>
+              <div className="flex flex-col min-w-0">
+                <span className="text-sm font-bold text-slate-900 truncate">{MOCK_USERS[0].name}</span>
+                <span className="text-xs font-medium text-slate-400">Workspace Owner</span>
+              </div>
+            </div>
+            <button 
+              onClick={() => setIsShareModalOpen(true)}
+              className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl text-xs font-bold transition-all shadow-lg shadow-indigo-100 flex items-center justify-center gap-2 group"
+            >
+              <Share2 size={16} className="group-hover:rotate-12 transition-transform" />
+              Invite Team
+            </button>
           </div>
         </div>
       </aside>
 
-      <main className="flex-1 flex flex-col min-w-0 relative">
-        <header className="h-20 shrink-0 flex items-center justify-between px-4 lg:px-8 bg-white/80 backdrop-blur-md border-b border-gray-100 sticky top-0 z-30">
-          <div className="flex items-center gap-4">
-            <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="lg:hidden p-2 hover:bg-gray-100 rounded-xl transition-colors">
+      {/* Main Content Area */}
+      <main className="flex-1 flex flex-col min-w-0 p-4 lg:p-6 overflow-hidden">
+        <header className="h-24 glass rounded-3xl mb-4 px-6 lg:px-10 flex items-center justify-between border border-white/40 shadow-sm z-40">
+          <div className="flex items-center gap-6">
+            <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="lg:hidden p-3 bg-white border border-slate-100 rounded-2xl text-slate-500 hover:text-indigo-600 transition-colors shadow-sm">
               <Menu size={24} />
             </button>
             <div className="flex flex-col">
-              <h1 className="text-2xl font-bold text-gray-900">{getViewTitle()}</h1>
-              <div className="flex items-center gap-2">
-                <p className="text-[10px] uppercase tracking-widest font-bold text-blue-500">Shared Workspace</p>
-                <span className="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-md font-black uppercase tracking-tighter shadow-sm">Live Sync</span>
+              <div className="flex items-center gap-3">
+                <h1 className="text-xl lg:text-2xl font-extrabold text-slate-900">
+                  {currentView === 'overview-month' ? format(currentDate, 'MMMM yyyy') : 
+                   currentView === 'overview-year' ? format(currentDate, 'yyyy') : 
+                   currentView === 'schedule' ? 'Workspace Timeline' : 
+                   currentView === 'team' ? 'Member Directory' : 'System Insights'}
+                </h1>
+                <div className="hidden sm:flex items-center gap-2 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                  </span>
+                  <span className="text-[10px] font-bold text-emerald-600 tracking-wider uppercase">Live Sync</span>
+                </div>
               </div>
+              <p className="text-[10px] lg:text-xs font-medium text-slate-400 uppercase tracking-[0.2em] mt-0.5">
+                ID: {getWorkspaceId()}
+              </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-4">
-            <button 
-              onClick={() => setIsShareModalOpen(true)}
-              className="p-2.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-xl transition-all flex items-center gap-2 font-bold text-xs"
-            >
-              <Share2 size={18} />
-              <span className="hidden lg:inline text-xs">Share</span>
-            </button>
-
+          <div className="flex items-center gap-3 lg:gap-5">
+            {/* View Selectors */}
             {(currentView === 'overview-month' || currentView === 'overview-year') && (
-              <div className="hidden md:flex bg-gray-100 rounded-xl p-1 gap-1 mr-2">
-                <button 
-                  onClick={() => setCurrentView('overview-month')}
-                  className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                    currentView === 'overview-month' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500 hover:text-gray-700'
-                  }`}
-                >
-                  Month
-                </button>
-                <button 
-                  onClick={() => setCurrentView('overview-year')}
-                  className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                    currentView === 'overview-year' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500 hover:text-gray-700'
-                  }`}
-                >
-                  Year
-                </button>
+              <div className="hidden sm:flex bg-slate-100/50 p-1.5 rounded-2xl gap-1 border border-slate-200/20">
+                <ViewToggleButton active={currentView === 'overview-month'} onClick={() => setCurrentView('overview-month')}>Month</ViewToggleButton>
+                <ViewToggleButton active={currentView === 'overview-year'} onClick={() => setCurrentView('overview-year')}>Year</ViewToggleButton>
               </div>
             )}
 
+            {/* Date Nav */}
             {(currentView === 'overview-month' || currentView === 'overview-year') && (
-              <div className="flex bg-gray-100 rounded-xl p-1 gap-1">
-                <button onClick={handlePrev} className="p-1.5 hover:bg-white hover:shadow-sm rounded-lg transition-all text-gray-600">
-                  <ChevronLeft size={20} />
-                </button>
+              <div className="flex bg-white border border-slate-100 p-1.5 rounded-2xl shadow-sm">
+                <HeaderIconButton onClick={handlePrev}><ChevronLeft size={20} /></HeaderIconButton>
                 <button 
                   onClick={() => { setCurrentDate(new Date()); setCurrentView('overview-month'); }}
-                  className="px-3 py-1.5 hover:bg-white hover:shadow-sm rounded-lg transition-all text-xs font-bold text-gray-600"
+                  className="px-4 text-[11px] font-extrabold text-slate-600 hover:text-indigo-600 uppercase tracking-widest transition-colors"
                 >
-                  Today
+                  Now
                 </button>
-                <button onClick={handleNext} className="p-1.5 hover:bg-white hover:shadow-sm rounded-lg transition-all text-gray-600">
-                  <ChevronRight size={20} />
-                </button>
+                <HeaderIconButton onClick={handleNext}><ChevronRight size={20} /></HeaderIconButton>
               </div>
             )}
 
             <div className="relative">
-              <button onClick={() => setShowNotifications(!showNotifications)} className="p-2.5 hover:bg-gray-100 rounded-xl transition-all relative group">
-                <Bell size={22} className="text-gray-600 group-hover:text-blue-600 transition-colors" />
+              <HeaderIconButton onClick={() => setShowNotifications(!showNotifications)} className="relative">
+                <Bell size={22} />
                 {unreadCount > 0 && (
-                  <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-rose-500 border-2 border-white rounded-full"></span>
+                  <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-rose-500 ring-4 ring-white rounded-full"></span>
                 )}
-              </button>
+              </HeaderIconButton>
               {showNotifications && (
                 <NotificationPanel 
                   notifications={notifications} 
@@ -338,41 +288,96 @@ const App: React.FC = () => {
 
             <button 
               onClick={() => { setEditingEvent(null); setIsModalOpen(true); }}
-              className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2 px-5 py-2.5 rounded-xl shadow-lg shadow-blue-200 active:scale-95 group transition-all"
+              className="bg-indigo-600 hover:bg-indigo-700 text-white h-12 px-6 rounded-2xl shadow-xl shadow-indigo-100 flex items-center gap-2 group active:scale-95 transition-all"
             >
-              <Plus size={20} className="group-hover:rotate-90 transition-transform duration-300" />
-              <span className="hidden sm:inline font-bold text-sm">Create</span>
+              <Plus size={22} className="group-hover:rotate-90 transition-transform duration-300" />
+              <span className="hidden lg:inline font-bold text-sm tracking-tight">Create</span>
             </button>
           </div>
         </header>
 
-        <div className="flex-1 p-4 lg:p-8 flex flex-col gap-6 overflow-hidden">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="flex -space-x-3 overflow-hidden">
-              {MOCK_USERS.map((user) => (
-                <img key={user.id} className="inline-block h-10 w-10 rounded-full ring-4 ring-[#f9fafb] shadow-sm hover:translate-y-[-4px] transition-all cursor-pointer" src={user.avatar} alt={user.name} />
-              ))}
-              <div className="h-10 w-10 rounded-full ring-4 ring-[#f9fafb] bg-white flex items-center justify-center text-xs font-bold text-gray-400 border border-dashed border-gray-300 cursor-pointer hover:bg-gray-50">
-                +12
+        {/* Dynamic Content View Container */}
+        <div className="flex-1 flex flex-col gap-6 overflow-hidden animate-page">
+          <div className="px-2 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex flex-col gap-1">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Active Collaborators</p>
+              <div className="flex -space-x-4">
+                {MOCK_USERS.map((user) => (
+                  <div key={user.id} className="relative group cursor-pointer">
+                    <img 
+                      className="h-11 w-11 rounded-2xl ring-4 ring-[#fcfdfe] shadow-lg group-hover:-translate-y-2 group-hover:rotate-6 transition-all duration-300" 
+                      src={user.avatar} 
+                      alt={user.name} 
+                    />
+                    <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[10px] font-bold px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
+                      {user.name}
+                    </div>
+                  </div>
+                ))}
+                <div className="h-11 w-11 rounded-2xl ring-4 ring-[#fcfdfe] bg-indigo-50 flex items-center justify-center text-[11px] font-bold text-indigo-600 border-2 border-dashed border-indigo-200 hover:bg-indigo-100 transition-colors cursor-pointer">
+                  +12
+                </div>
               </div>
             </div>
             
-            <div className="flex items-center gap-3 w-full sm:w-auto">
-              <div className="flex-1 sm:w-64 bg-white rounded-xl px-4 py-2 border border-gray-200 flex items-center gap-2 focus-within:ring-2 ring-blue-500/20 transition-all">
-                <Search size={18} className="text-gray-400" />
-                <input type="text" placeholder="Find events..." className="w-full text-sm outline-none bg-transparent" />
+            <div className="w-full sm:w-auto flex items-center gap-3">
+              <div className="flex-1 sm:w-80 bg-white rounded-2xl px-5 py-3 border border-slate-100 flex items-center gap-3 shadow-sm focus-within:ring-2 ring-indigo-500/10 transition-all">
+                <Search size={18} className="text-slate-300" />
+                <input type="text" placeholder="Search workspace events..." className="w-full text-sm font-medium outline-none bg-transparent placeholder:text-slate-300" />
               </div>
+              <button className="p-3 bg-white border border-slate-100 rounded-2xl text-slate-400 hover:text-slate-600 transition-colors shadow-sm">
+                <Activity size={20} />
+              </button>
             </div>
           </div>
 
-          {renderContent()}
+          {/* Render Area */}
+          <div className="flex-1 flex flex-col overflow-hidden">
+            {currentView === 'overview-month' && (
+              <CalendarGrid 
+                currentMonth={currentDate} 
+                events={events}
+                onDateClick={(date) => {
+                  setSelectedDate(format(date, 'yyyy-MM-dd'));
+                  setIsModalOpen(true);
+                  setEditingEvent(null);
+                }}
+                onEventClick={(event) => {
+                  setEditingEvent(event);
+                  setIsModalOpen(true);
+                }}
+              />
+            )}
+            {currentView === 'overview-year' && (
+              <YearGrid 
+                currentDate={currentDate}
+                events={events}
+                onMonthClick={(month) => {
+                  setCurrentDate(month);
+                  setCurrentView('overview-month');
+                }}
+              />
+            )}
+            {currentView === 'schedule' && (
+              <ScheduleView 
+                events={events}
+                onEventClick={(event) => {
+                  setEditingEvent(event);
+                  setIsModalOpen(true);
+                }}
+              />
+            )}
+            {currentView === 'team' && <TeamView />}
+            {currentView === 'settings' && <SettingsView events={events} />}
+          </div>
         </div>
 
+        {/* Mobile FAB */}
         <button 
           onClick={() => { setEditingEvent(null); setIsModalOpen(true); }}
-          className="fixed bottom-6 right-6 sm:hidden w-14 h-14 bg-blue-600 rounded-full flex items-center justify-center text-white shadow-2xl shadow-blue-400 active:scale-90 transition-all z-40"
+          className="fixed bottom-8 right-8 lg:hidden w-16 h-16 bg-indigo-600 rounded-[2rem] flex items-center justify-center text-white shadow-2xl shadow-indigo-400 active:scale-90 active:rotate-45 transition-all z-40"
         >
-          <Plus size={30} />
+          <Plus size={32} />
         </button>
       </main>
 
@@ -390,21 +395,45 @@ const App: React.FC = () => {
       />
       
       {isSidebarOpen && (
-        <div className="lg:hidden fixed inset-0 bg-black/20 backdrop-blur-sm z-30" onClick={() => setIsSidebarOpen(false)} />
+        <div className="lg:hidden fixed inset-0 bg-slate-900/40 backdrop-blur-md z-[45] animate-in fade-in duration-300" onClick={() => setIsSidebarOpen(false)} />
       )}
     </div>
   );
 };
 
-const NavItem: React.FC<{ icon: React.ReactNode, label: string, active?: boolean }> = ({ icon, label, active }) => (
-  <div className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all font-medium text-sm ${
+const NavButton: React.FC<{ icon: React.ReactNode, label: string, active?: boolean, onClick: () => void }> = ({ icon, label, active, onClick }) => (
+  <button 
+    onClick={onClick}
+    className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all font-bold text-sm group ${
     active 
-      ? 'bg-blue-50 text-blue-700 shadow-sm' 
-      : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
+      ? 'bg-indigo-50 text-indigo-700 shadow-sm border border-indigo-100' 
+      : 'text-slate-400 hover:bg-slate-50 hover:text-slate-900'
   }`}>
-    <span className={active ? 'text-blue-600' : 'text-gray-400'}>{icon}</span>
+    <span className={`${active ? 'text-indigo-600' : 'text-slate-300 group-hover:text-slate-600'} transition-colors`}>
+      {icon}
+    </span>
     {label}
-  </div>
+  </button>
+);
+
+const ViewToggleButton: React.FC<{ children: React.ReactNode, active: boolean, onClick: () => void }> = ({ children, active, onClick }) => (
+  <button 
+    onClick={onClick}
+    className={`px-6 py-2 rounded-xl text-[11px] font-extrabold tracking-widest uppercase transition-all ${
+      active ? 'bg-white shadow-md text-indigo-600' : 'text-slate-400 hover:text-slate-600'
+    }`}
+  >
+    {children}
+  </button>
+);
+
+const HeaderIconButton: React.FC<{ children: React.ReactNode, onClick: () => void, className?: string }> = ({ children, onClick, className = '' }) => (
+  <button 
+    onClick={onClick} 
+    className={`p-3 hover:bg-slate-50 rounded-xl text-slate-400 hover:text-indigo-600 transition-all ${className}`}
+  >
+    {children}
+  </button>
 );
 
 export default App;
