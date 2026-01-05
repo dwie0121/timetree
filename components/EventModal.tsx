@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect } from 'react';
-import { X, Sparkles, Clock, AlignLeft, Calendar as CalendarIcon, Loader2 } from 'lucide-react';
+import { X, Sparkles, Clock, AlignLeft, Calendar as CalendarIcon, Loader2, Trash2 } from 'lucide-react';
 import { CalendarEvent, Category } from '../types';
 import { CATEGORIES } from '../constants';
 import { parseEventFromNaturalLanguage } from '../services/geminiService';
@@ -9,11 +8,12 @@ interface EventModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (event: Omit<CalendarEvent, 'id' | 'createdBy' | 'attendees'>) => void;
+  onDelete?: (id: string) => void;
   initialDate?: string;
   editEvent?: CalendarEvent | null;
 }
 
-const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, initialDate, editEvent }) => {
+const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, onDelete, initialDate, editEvent }) => {
   const [title, setTitle] = useState('');
   const [date, setDate] = useState(initialDate || '');
   const [startTime, setStartTime] = useState('09:00');
@@ -61,6 +61,14 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, initia
       setMagicInput('');
     }
     setIsMagicParsing(false);
+  };
+
+  const handleDelete = () => {
+    if (editEvent && onDelete) {
+      if (window.confirm('Are you sure you want to delete this event?')) {
+        onDelete(editEvent.id);
+      }
+    }
   };
 
   if (!isOpen) return null;
@@ -195,18 +203,31 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, initia
           </div>
         </div>
 
-        <div className="p-6 bg-gray-50/80 flex items-center justify-end gap-3 border-t border-gray-100">
-          <button onClick={onClose} className="px-6 py-2.5 text-gray-600 hover:bg-gray-200 rounded-xl font-medium text-sm">Cancel</button>
-          <button 
-            onClick={() => onSave({ 
-              title, date, startTime, endTime, category, description, 
-              amount: amount ? parseFloat(amount) : undefined, 
-              transactionType 
-            })}
-            className="px-8 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-lg shadow-blue-200 font-bold text-sm"
-          >
-            Save Event
-          </button>
+        <div className="p-6 bg-gray-50/80 flex items-center justify-between border-t border-gray-100">
+          <div>
+            {editEvent && (
+              <button 
+                onClick={handleDelete}
+                className="flex items-center gap-2 px-4 py-2.5 text-rose-600 hover:bg-rose-50 rounded-xl font-bold text-sm transition-colors"
+              >
+                <Trash2 size={18} />
+                Delete
+              </button>
+            )}
+          </div>
+          <div className="flex items-center gap-3">
+            <button onClick={onClose} className="px-6 py-2.5 text-gray-600 hover:bg-gray-200 rounded-xl font-medium text-sm transition-colors">Cancel</button>
+            <button 
+              onClick={() => onSave({ 
+                title, date, startTime, endTime, category, description, 
+                amount: amount ? parseFloat(amount) : undefined, 
+                transactionType 
+              })}
+              className="px-8 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-lg shadow-blue-200 font-bold text-sm transition-all active:scale-95"
+            >
+              Save Event
+            </button>
+          </div>
         </div>
       </div>
     </div>

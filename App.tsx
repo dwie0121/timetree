@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Plus, 
@@ -167,6 +166,31 @@ const App: React.FC = () => {
       localStorage.setItem(`synctree_events_${wsId}`, JSON.stringify(updatedEvents));
       setIsModalOpen(false);
       setEditingEvent(null);
+    }
+  };
+
+  const handleDeleteEvent = async (id: string) => {
+    const wsId = getWorkspaceId();
+    
+    if (supabase) {
+      const { error } = await supabase
+        .from('events')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        console.error("Supabase Delete Error:", error);
+      } else {
+        setIsModalOpen(false);
+        setEditingEvent(null);
+      }
+    } else {
+      const updatedEvents = events.filter(e => e.id !== id);
+      setEvents(updatedEvents);
+      localStorage.setItem(`synctree_events_${wsId}`, JSON.stringify(updatedEvents));
+      setIsModalOpen(false);
+      setEditingEvent(null);
+      pushNotification('Event Removed', 'The event has been deleted.', 'update');
     }
   };
 
@@ -345,6 +369,7 @@ const App: React.FC = () => {
         isOpen={isModalOpen} 
         onClose={() => { setIsModalOpen(false); setEditingEvent(null); }}
         onSave={handleSaveEvent}
+        onDelete={handleDeleteEvent}
         initialDate={selectedDate}
         editEvent={editingEvent}
       />
